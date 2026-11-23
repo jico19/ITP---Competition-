@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
 import AdminNav from '../../components/AdminNav'
+import ConfirmModal from '../../components/ConfirmModal'
 import DifficultyBlocks from '../../components/DifficultyBlocks'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminChallenges } from '../../hooks/useAdminChallenges'
@@ -12,6 +13,7 @@ export default function ChallengeList() {
   const { challenges, loading, error, reload } = useAdminChallenges()
   const [busyId, setBusyId] = useState('')
   const [actionError, setActionError] = useState('')
+  const [challengeToDelete, setChallengeToDelete] = useState(null)
 
   async function handleToggle(challenge) {
     setBusyId(challenge.id)
@@ -30,20 +32,18 @@ export default function ChallengeList() {
     }
   }
 
-  async function handleDelete(challenge) {
-    const confirmed = window.confirm(
-      `Delete "${challenge.title}"? This also removes its scores, submissions, and judge scores.`,
-    )
-    if (!confirmed) return
+  async function handleConfirmDelete() {
+    if (!challengeToDelete) return
 
-    setBusyId(challenge.id)
+    setBusyId(challengeToDelete.id)
     setActionError('')
     try {
       const { error: deleteError } = await supabase
         .from('challenges')
         .delete()
-        .eq('id', challenge.id)
+        .eq('id', challengeToDelete.id)
       if (deleteError) throw deleteError
+      setChallengeToDelete(null)
       await reload()
     } catch (err) {
       setActionError(getReadableError(err, 'Could not delete challenge.'))
@@ -149,7 +149,7 @@ export default function ChallengeList() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(challenge)}
+                    onClick={() => setChallengeToDelete(challenge)}
                     disabled={busyId === challenge.id}
                     aria-label={`Delete ${challenge.title}`}
                     className="inline-flex h-11 items-center justify-center gap-2 border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
@@ -162,6 +162,18 @@ export default function ChallengeList() {
             ))}
           </section>
         ) : null}
+
+        <ConfirmModal
+          isOpen={Boolean(challengeToDelete)}
+          onClose={() => setChallengeToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          loading={busyId === challengeToDelete?.id}
+          title="# Delete Challenge"
+          message={`Delete "${challengeToDelete?.title}"? This also removes its scores, submissions, and judge scores.`}
+          confirmLabel="[×] delete"
+          cancelLabel="cancel"
+          isDestructive
+        />
       </div>
     </main>
   )
