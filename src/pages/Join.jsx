@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import StatusGlyph from '../components/StatusGlyph'
 import { useSession } from '../hooks/useSession'
 import { getReadableError } from '../lib/errors'
 import { suggestDisplayName } from '../lib/names'
@@ -41,27 +42,22 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
 
     setLoading(true)
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession()
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
       if (sessionError) throw sessionError
 
       let session = sessionData.session
       if (!session) {
-        const { data: anonData, error: anonError } =
-          await supabase.auth.signInAnonymously()
+        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
         if (anonError) throw anonError
         session = anonData.session
       }
 
       if (session) setSession(session)
 
-      const { data: joinedProfile, error: joinError } = await supabase.rpc(
-        'join_room',
-        {
-          p_code: roomCode.trim(),
-          p_name: displayName.trim(),
-        },
-      )
+      const { data: joinedProfile, error: joinError } = await supabase.rpc('join_room', {
+        p_code: roomCode.trim(),
+        p_name: displayName.trim(),
+      })
       if (joinError) throw joinError
 
       setProfile(joinedProfile)
@@ -83,72 +79,85 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
   }
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="mx-auto w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Join room</h1>
-        <p className="mt-2 text-sm text-slate-600">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 md:px-6">
+      <div className="border border-line-strong bg-surface-1 p-6 md:p-9">
+        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Join room</h1>
+        <p className="mt-3 max-w-xl text-sm text-fg-muted">
           {isRejoin
             ? 'Update your display name or rejoin with a room code.'
             : 'Enter a display name and room code to join.'}
         </p>
 
-        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="display-name">
-              Display name
-            </label>
-            <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-              <input
-                id="display-name"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={24}
-                autoComplete="off"
-                placeholder="Your name"
-              />
-              <button
-                type="button"
-                className="shrink-0 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() => setDisplayName(suggestDisplayName())}
-              >
-                Suggest name
-              </button>
+        <div className="mt-6 border border-line-strong bg-surface-2">
+          <div className="flex h-8 items-center gap-2 border-b border-line px-3 text-xs text-fg-muted">
+            <span aria-hidden="true">■ □ □</span>
+            <span>~/join</span>
+          </div>
+
+          <form className="space-y-6 p-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-fg-muted" htmlFor="display-name">
+                handle
+              </label>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                <div className="flex h-10 flex-1 items-center border border-line-strong bg-surface-2 focus-within:border-fg">
+                  <span className="blink-cursor pl-3 text-fg-faint" aria-hidden="true">$</span>
+                  <input
+                    id="display-name"
+                    className="h-full w-full bg-transparent px-2 text-sm text-fg outline-none placeholder:text-fg-faint"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    maxLength={24}
+                    autoComplete="off"
+                    placeholder="enter_handle"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDisplayName(suggestDisplayName())}
+                  className="h-10 shrink-0 border border-line-strong bg-transparent px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 active:shadow-none"
+                >
+                  suggest
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-fg-muted">1 to 24 characters.</p>
             </div>
-            <p className="mt-1 text-xs text-slate-500">1–24 characters.</p>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="room-code">
-              Room code
-            </label>
-            <input
-              id="room-code"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm uppercase tracking-wide outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value)}
-              autoComplete="off"
-              placeholder="e.g. TEST1"
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-fg-muted" htmlFor="room-code">
+                room code
+              </label>
+              <div className="mt-2 flex h-10 items-center border border-line-strong bg-surface-2 focus-within:border-fg">
+                <span className="pl-3 text-fg-faint" aria-hidden="true">$</span>
+                <input
+                  id="room-code"
+                  className="h-full w-full bg-transparent px-2 text-sm uppercase text-fg outline-none placeholder:text-fg-faint"
+                  type="text"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value)}
+                  autoComplete="off"
+                  placeholder="TEST1"
+                />
+              </div>
+            </div>
 
-          {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-              {error}
-            </p>
-          ) : null}
+            {error ? (
+              <div className="border border-dashed border-line-strong p-3" role="alert">
+                <StatusGlyph status="error" label={error} />
+              </div>
+            ) : null}
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={loading}
-          >
-            {loading ? 'Joining...' : isRejoin ? 'Rejoin / Update name' : 'Join room'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-10 w-full border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted"
+            >
+              {loading ? '$ joining...' : isRejoin ? '$ rejoin' : '$ join'}
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   )
@@ -159,10 +168,8 @@ export default function Join() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-        <div className="mx-auto max-w-md">
-          <p className="text-sm text-slate-600">Loading...</p>
-        </div>
+      <main className="mx-auto max-w-2xl px-4 py-10 md:px-6">
+        <StatusGlyph status="loading" label="Loading session..." />
       </main>
     )
   }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Plus, X } from 'lucide-react'
 import AdminNav from '../../components/AdminNav'
 import CodeEditor from '../../components/CodeEditor'
+import StatusGlyph from '../../components/StatusGlyph'
 import Terminal from '../../components/Terminal'
 import { usePyEngine } from '../../hooks/usePyEngine'
 import { getReadableError } from '../../lib/errors'
@@ -19,6 +21,17 @@ const emptyForm = {
   sort_order: 0,
   published: false,
 }
+
+const panelClass = 'border border-line-strong bg-surface-1 p-6'
+const labelClass = 'block text-xs font-bold uppercase tracking-widest text-fg-muted'
+const inputClass =
+  'mt-2 h-11 w-full border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-fg'
+const textareaClass =
+  'mt-2 w-full border border-line-strong bg-surface-2 px-3 py-2 text-sm leading-6 text-fg outline-none placeholder:text-fg-faint focus:border-fg'
+const secondaryButton =
+  'inline-flex h-11 items-center justify-center gap-2 border border-line-strong bg-transparent px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50'
+const primaryButton =
+  'inline-flex h-11 items-center justify-center border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted'
 
 function makeId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
@@ -67,23 +80,26 @@ function rubricFromRows(rows) {
 
 function TestRow({ row, index, onChange, onRemove }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium text-slate-700">Test {index + 1}</span>
+    <div className="border border-line-strong bg-surface-2 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs font-bold uppercase tracking-widest text-fg-muted">
+          ## test {String(index + 1).padStart(2, '0')}
+        </span>
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs font-medium text-rose-700 hover:underline"
+          className="inline-flex h-11 items-center justify-center gap-2 border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
         >
-          Remove
+          <X size={14} strokeWidth={1.75} aria-hidden="true" />
+          remove
         </button>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-medium text-slate-600">
-          Type
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label>
+          <span className={labelClass}>type</span>
           <select
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+            className={inputClass}
             value={row.kind}
             onChange={(event) => onChange({ kind: event.target.value })}
           >
@@ -92,21 +108,22 @@ function TestRow({ row, index, onChange, onRemove }) {
           </select>
         </label>
 
-        <label className="flex items-end gap-2 pb-1.5 text-sm text-slate-700">
+        <label className="flex items-end gap-3 pb-1 text-sm text-fg">
           <input
             type="checkbox"
             checked={row.visible}
             onChange={(event) => onChange({ visible: event.target.checked })}
+            className="size-4 border border-line-strong bg-surface-2 accent-current"
           />
-          Visible to players
+          visible to players
         </label>
       </div>
 
       {row.kind === 'stdin' ? (
-        <label className="mt-3 block text-xs font-medium text-slate-600">
-          Input (stdin)
+        <label className={labelClass}>
+          input (stdin)
           <textarea
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-sm"
+            className={`${textareaClass} font-mono`}
             rows={2}
             value={row.stdin}
             onChange={(event) => onChange({ stdin: event.target.value })}
@@ -114,10 +131,10 @@ function TestRow({ row, index, onChange, onRemove }) {
           />
         </label>
       ) : (
-        <label className="mt-3 block text-xs font-medium text-slate-600">
-          Call expression
+        <label className={labelClass}>
+          call expression
           <input
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-sm"
+            className={`${inputClass} font-mono`}
             value={row.call}
             onChange={(event) => onChange({ call: event.target.value })}
             placeholder="evens([1, 2, 3])"
@@ -125,17 +142,17 @@ function TestRow({ row, index, onChange, onRemove }) {
         </label>
       )}
 
-      <label className="mt-3 block text-xs font-medium text-slate-600">
-        Expected
+      <label className={labelClass}>
+        expected
         <textarea
-          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-sm"
+          className={`${textareaClass} font-mono`}
           rows={2}
           value={row.expected}
           onChange={(event) => onChange({ expected: event.target.value })}
           placeholder={row.kind === 'call' ? '[2]' : 'Hello, Ana!'}
         />
       </label>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-2 text-xs text-fg-muted">
         {row.kind === 'call'
           ? 'Use Python repr, e.g. [2, 4] or'
           : 'One line per input() call. Trailing whitespace is ignored.'}
@@ -147,20 +164,20 @@ function TestRow({ row, index, onChange, onRemove }) {
 
 function RubricRow({ row, index, onChange, onRemove }) {
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <label className="min-w-[12rem] flex-1 text-xs font-medium text-slate-600">
-        Criterion {index + 1}
+    <div className="flex flex-wrap items-end gap-3 border border-line-strong bg-surface-2 p-4">
+      <label className="min-w-[12rem] flex-1">
+        <span className={labelClass}>criterion {String(index + 1).padStart(2, '0')}</span>
         <input
-          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+          className={inputClass}
           value={row.label}
           onChange={(event) => onChange({ label: event.target.value })}
           placeholder="Add a task"
         />
       </label>
-      <label className="text-xs font-medium text-slate-600">
-        Points
+      <label>
+        <span className={labelClass}>points</span>
         <input
-          className="mt-1 w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+          className={`${inputClass} w-24 tabular-nums`}
           type="number"
           min="1"
           value={row.points}
@@ -170,9 +187,10 @@ function RubricRow({ row, index, onChange, onRemove }) {
       <button
         type="button"
         onClick={onRemove}
-        className="pb-1.5 text-xs font-medium text-rose-700 hover:underline"
+        className="inline-flex h-11 items-center justify-center gap-2 border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
       >
-        Remove
+        <X size={14} strokeWidth={1.75} aria-hidden="true" />
+        remove
       </button>
     </div>
   )
@@ -189,7 +207,7 @@ function TestItPanel({ tests, initialCode }) {
     setRunning(true)
 
     const revealedTests = tests.map((test) => ({ ...test, visible: true }))
-    setLines([{ kind: 'info', text: `Running ${revealedTests.length} test(s)...` }])
+    setLines([{ kind: 'info', text: `[…] running ${revealedTests.length} test(s)` }])
 
     try {
       const result = await runPython(solution, revealedTests)
@@ -197,29 +215,34 @@ function TestItPanel({ tests, initialCode }) {
         ...formatTestResults(result.results),
         {
           kind: 'summary',
-          text: `Passed ${result.passed}/${result.total} tests`,
+          text: `[✓] passed ${result.passed}/${result.total} tests`,
         },
       ])
     } catch (err) {
-      setLines([{ kind: 'error', text: getReadableError(err, 'Python run failed.') }])
+      setLines([
+        {
+          kind: 'error',
+          text: `[!] ${getReadableError(err, 'Python run failed.')}`,
+        },
+      ])
     } finally {
       setRunning(false)
     }
   }
 
   return (
-    <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className={panelClass}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Test it</h2>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## test it</h2>
         <button
           type="button"
           onClick={() => setSolution(initialCode)}
-          className="text-xs font-medium text-slate-600 hover:underline"
+          className="text-xs font-bold uppercase tracking-wider text-fg-muted underline-offset-4 hover:text-fg hover:underline"
         >
-          Reset to starter code
+          reset to starter code
         </button>
       </div>
-      <p className="mt-1 text-sm text-slate-600">
+      <p className="mt-2 text-sm text-fg-muted">
         Run a reference solution through the same engine. Nothing is submitted or scored.
       </p>
 
@@ -230,11 +253,13 @@ function TestItPanel({ tests, initialCode }) {
         type="button"
         onClick={handleRun}
         disabled={running || !engine.ready}
-        className="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className={`mt-4 ${primaryButton}`}
       >
-        {running ? 'Running tests...' : 'Run tests'}
+        {running ? '[...] running tests' : '> run'}
       </button>
-      <Terminal lines={lines} engine={engine} />
+      <div className="mt-6">
+        <Terminal lines={lines} engine={engine} />
+      </div>
     </section>
   )
 }
@@ -383,19 +408,22 @@ export default function ChallengeForm() {
 
   if (loading) {
     return (
-      <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-        <p className="text-sm text-slate-600">Loading challenge...</p>
+      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+        <StatusGlyph status="loading" label="Loading challenge..." />
       </main>
     )
   }
 
   if (loadError) {
     return (
-      <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-        <div className="mx-auto max-w-3xl rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          <p>{loadError}</p>
-          <Link to="/admin/challenges" className="mt-3 inline-block underline">
-            Back to challenges
+      <main className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+        <div className="border border-dashed border-line-strong p-6" role="alert">
+          <StatusGlyph status="error" label={loadError} />
+          <Link
+            to="/admin/challenges"
+            className="mt-4 inline-flex h-11 items-center border border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
+          >
+            back to challenges
           </Link>
         </div>
       </main>
@@ -408,59 +436,60 @@ export default function ChallengeForm() {
   )
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
+    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+      <div className="mx-auto w-full max-w-4xl">
         <header>
-          <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {isEdit ? 'Edit challenge' : 'New challenge'}
+          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg">
+            # {isEdit ? 'Edit challenge' : 'New challenge'}
           </h1>
           <AdminNav />
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Details</h2>
+        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+          <section className={panelClass}>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium text-slate-700 sm:col-span-2">
-                Title
+              <label className="sm:col-span-2">
+                <span className={labelClass}>title</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  className={inputClass}
                   value={form.title}
                   onChange={(event) => updateField('title', event.target.value)}
+                  placeholder="Sum of evens"
                   required
                 />
               </label>
 
-              <label className="text-sm font-medium text-slate-700">
-                Tier
+              <label>
+                <span className={labelClass}>tier</span>
                 <select
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className={inputClass}
                   value={form.tier}
                   onChange={(event) => updateField('tier', event.target.value)}
                 >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
                 </select>
               </label>
 
-              <label className="text-sm font-medium text-slate-700">
-                Type
+              <label>
+                <span className={labelClass}>type</span>
                 <select
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className={inputClass}
                   value={form.type}
                   onChange={(event) => updateField('type', event.target.value)}
                 >
-                  <option value="python">Python</option>
-                  <option value="web">Web</option>
+                  <option value="python">python</option>
+                  <option value="web">web</option>
                 </select>
               </label>
 
-              <label className="text-sm font-medium text-slate-700">
-                Max points
+              <label>
+                <span className={labelClass}>max points</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className={`${inputClass} tabular-nums`}
                   type="number"
                   min="1"
                   value={form.points}
@@ -468,57 +497,66 @@ export default function ChallengeForm() {
                 />
               </label>
 
-              <label className="text-sm font-medium text-slate-700">
-                Order
+              <label>
+                <span className={labelClass}>order</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className={`${inputClass} tabular-nums`}
                   type="number"
                   value={form.sort_order}
                   onChange={(event) => updateField('sort_order', event.target.value)}
                 />
               </label>
 
-              <label className="text-sm font-medium text-slate-700 sm:col-span-2">
-                Description
+              <label className="sm:col-span-2">
+                <span className={labelClass}>description</span>
                 <textarea
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  className={textareaClass}
                   rows={5}
                   value={form.description}
                   onChange={(event) => updateField('description', event.target.value)}
+                  placeholder="Write the full problem statement."
                   required
                 />
               </label>
+              <p className="text-xs text-fg-muted sm:col-span-2">
+                Tip: use `backticks` around code, function names, and exact output labels to highlight them.
+              </p>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 sm:col-span-2">
+              <label className="flex items-center gap-3 text-sm text-fg sm:col-span-2">
                 <input
                   type="checkbox"
                   checked={form.published}
                   onChange={(event) => updateField('published', event.target.checked)}
+                  className="size-4 border border-line-strong bg-surface-2 accent-current"
                 />
-                Published
+                published
               </label>
             </div>
           </section>
 
           {form.type === 'python' ? (
             <>
-              <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <CodeEditor
-                  title="Starter code"
-                  value={form.starter_code}
-                  onChange={(value) => updateField('starter_code', value)}
-                />
+              <section className={panelClass}>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## starter code</h2>
+                <div className="mt-4">
+                  <CodeEditor
+                    title="Starter code"
+                    value={form.starter_code}
+                    onChange={(value) => updateField('starter_code', value)}
+                  />
+                </div>
               </section>
 
-              <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <section className={panelClass}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold">Tests</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## tests</h2>
                   <button
                     type="button"
                     onClick={() => setTestRows((previous) => [...previous, blankTest()])}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    className={secondaryButton}
                   >
-                    Add test
+                    <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
+                    add test
                   </button>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -543,15 +581,16 @@ export default function ChallengeForm() {
               />
             </>
           ) : (
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <section className={panelClass}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Scoring rubric</h2>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## scoring rubric</h2>
                 <button
                   type="button"
                   onClick={() => setRubricRows((previous) => [...previous, blankRubric()])}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className={secondaryButton}
                 >
-                  Add criterion
+                  <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
+                  add criterion
                 </button>
               </div>
               <div className="mt-4 space-y-3">
@@ -567,33 +606,32 @@ export default function ChallengeForm() {
                   />
                 ))}
               </div>
-              <p className="mt-3 text-sm text-slate-600">
-                Rubric total: <span className="font-medium">{rubricTotal}</span> · Max points:{' '}
-                <span className="font-medium">{Number(form.points) || 0}</span>
+              <p className="mt-4 text-xs text-fg-muted tabular-nums">
+                rubric total: {rubricTotal} · max points: {Number(form.points) || 0}
               </p>
               {rubricTotal !== Number(form.points) ? (
-                <p className="mt-1 text-sm text-amber-700">
-                  These do not match. Judges cannot award more than the max points.
-                </p>
+                <div className="mt-3 border border-dashed border-line-strong p-3">
+                  <StatusGlyph
+                    status="error"
+                    label="These do not match. Judges cannot award more than the max points."
+                  />
+                </div>
               ) : null}
             </section>
           )}
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? (
+            <div className="border border-dashed border-line-strong p-3" role="alert">
+              <StatusGlyph status="error" label={error} />
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? 'Saving...' : 'Save challenge'}
+            <button type="submit" disabled={saving} className={primaryButton}>
+              {saving ? '[...] saving' : '> save challenge'}
             </button>
-            <Link
-              to="/admin/challenges"
-              className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-white"
-            >
-              Cancel
+            <Link to="/admin/challenges" className={secondaryButton}>
+              cancel
             </Link>
           </div>
         </form>

@@ -1,4 +1,5 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
+import StatusGlyph from './StatusGlyph'
 import { useAdminStatus } from '../hooks/useAdminStatus'
 
 export default function RequireAdmin() {
@@ -7,19 +8,24 @@ export default function RequireAdmin() {
 
   if (status === 'loading') {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-slate-50 px-4 text-slate-600">
-        Checking admin access...
+      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+        <StatusGlyph status="loading" label="Checking admin access..." />
       </main>
     )
   }
 
   if (error) {
     return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center text-slate-900">
-        <p className="text-lg font-semibold">Admin access error</p>
-        <p className="max-w-md text-sm text-red-600">{error}</p>
-        <Link to="/admin/login" className="text-sm text-slate-600 underline">
-          Back to login
+      <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-bg px-4 text-center text-fg">
+        <div className="max-w-md border border-dashed border-line-strong p-6" role="alert">
+          <StatusGlyph status="error" label="Admin access error" />
+          <p className="mt-3 text-sm text-fg-muted">{error}</p>
+        </div>
+        <Link
+          to="/admin/login"
+          className="inline-flex h-11 items-center border border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
+        >
+          back to login
         </Link>
       </main>
     )

@@ -2,10 +2,10 @@ export function formatTestResults(results) {
   const lines = []
 
   results.forEach((result, index) => {
-    const label = `Test ${index + 1}${result.visible ? '' : ' (hidden)'}`
+    const label = `case ${index + 1}${result.visible ? '' : ' (hidden)'}`
     lines.push({
       kind: result.passed ? 'pass' : 'fail',
-      text: `${result.passed ? '✓' : '✗'} ${label}`,
+      text: `${result.passed ? '[✓]' : '[!]'} ${label} ${result.passed ? 'AC' : 'WA'}`,
     })
     if (!result.visible) return
 
@@ -13,12 +13,12 @@ export function formatTestResults(results) {
     if (result.error) {
       lines.push({
         kind: 'error',
-        text: `${result.error}${result.line ? ` (line ${result.line})` : ''}`,
+        text: `[!] error (line ${result.line ?? '?'}): ${result.error}`,
       })
     }
     if (!result.passed && !result.error) {
-      lines.push({ kind: 'muted', text: `  Expected: ${JSON.stringify(result.expected)}` })
-      lines.push({ kind: 'muted', text: `  Got:      ${JSON.stringify(result.got)}` })
+      lines.push({ kind: 'muted', text: `  expected: ${JSON.stringify(result.expected)}` })
+      lines.push({ kind: 'muted', text: `  got:      ${JSON.stringify(result.got)}` })
     }
   })
 

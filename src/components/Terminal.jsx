@@ -1,39 +1,48 @@
-const lineColor = {
-  info: 'text-slate-400',
-  stdout: 'text-slate-200',
-  error: 'text-red-400',
-  pass: 'text-green-400',
-  fail: 'text-rose-400',
-  muted: 'text-slate-400',
-  summary: 'text-amber-300 font-semibold',
+import StatusGlyph from './StatusGlyph'
+import TerminalWindow from './TerminalWindow'
+
+const lineClass = {
+  info: 'text-fg-muted',
+  stdout: 'text-fg',
+  error: 'border border-dashed border-line-strong px-2 text-fg',
+  pass: 'text-fg',
+  fail: 'border border-dashed border-line-strong px-2 font-bold text-fg',
+  muted: 'text-fg-muted',
+  summary: 'bg-invert-bg px-2 font-bold text-invert-fg',
+  accepted: 'bg-invert-bg px-2 font-bold text-invert-fg',
+  wrong: 'border border-dashed border-line-strong px-2 font-bold text-fg',
+  time: 'border border-dashed border-line-strong px-2 font-bold text-fg',
+  loading: 'text-fg-muted',
 }
 
-export default function Terminal({ lines, engine }) {
+export default function Terminal({ lines, engine, className = '' }) {
   return (
-    <section className="mt-6 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
-        <span className="font-mono text-xs uppercase tracking-wide text-slate-400">Terminal</span>
-        <span
-          className={`h-2 w-2 rounded-full ${engine.ready ? 'bg-green-400' : 'bg-amber-400'}`}
-          aria-hidden="true"
+    <TerminalWindow
+      label="~/tests/output"
+      className={className}
+      right={
+        <StatusGlyph
+          status={engine.ready ? 'solved' : 'loading'}
+          label={engine.ready ? 'python ready' : 'loading python'}
         />
-      </div>
-      <div className="max-h-96 overflow-auto p-4 font-mono text-xs leading-relaxed sm:text-sm">
+      }
+    >
+      <div className="max-h-96 space-y-1 overflow-auto">
         {!engine.ready ? (
-          <p className="text-amber-300">{engine.error || 'Loading Python...'}</p>
+          <p className="text-fg-muted">{engine.error || 'Loading Python...'}</p>
         ) : null}
         {engine.ready && lines.length === 0 ? (
-          <p className="text-slate-500">Run your code to see results.</p>
+          <p className="text-fg-muted">Run your code to see results.</p>
         ) : null}
         {lines.map((line, index) => (
           <p
             key={index}
-            className={`whitespace-pre-wrap ${lineColor[line.kind] ?? 'text-slate-200'}`}
+            className={`whitespace-pre-wrap ${lineClass[line.kind] ?? 'text-fg'}`}
           >
             {line.text}
           </p>
         ))}
       </div>
-    </section>
+    </TerminalWindow>
   )
 }

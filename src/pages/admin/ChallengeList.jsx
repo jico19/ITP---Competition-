@@ -1,15 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus, X } from 'lucide-react'
 import AdminNav from '../../components/AdminNav'
+import DifficultyBlocks from '../../components/DifficultyBlocks'
+import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminChallenges } from '../../hooks/useAdminChallenges'
 import { getReadableError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
-
-const tierStyles = {
-  easy: 'bg-green-100 text-green-700',
-  medium: 'bg-amber-100 text-amber-700',
-  hard: 'bg-rose-100 text-rose-700',
-}
 
 export default function ChallengeList() {
   const { challenges, loading, error, reload } = useAdminChallenges()
@@ -56,101 +53,115 @@ export default function ChallengeList() {
   }
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+      <div className="mx-auto w-full max-w-6xl">
         <header>
-          <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Admin · Challenges</h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Challenges</h1>
           <AdminNav />
         </header>
 
-        <div className="flex justify-end">
+        <div className="mt-6 flex justify-end">
           <Link
             to="/admin/challenges/new"
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="inline-flex h-11 items-center justify-center gap-2 border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
           >
-            New challenge
+            <Plus size={16} strokeWidth={1.75} aria-hidden="true" />
+            new challenge
           </Link>
         </div>
 
-        {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
+        {actionError ? (
+          <div className="mt-6 border border-dashed border-line-strong p-3" role="alert">
+            <StatusGlyph status="error" label={actionError} />
+          </div>
+        ) : null}
 
         {loading ? (
-          <p className="text-sm text-slate-600">Loading challenges...</p>
-        ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-            <p>{error}</p>
-            <button type="button" onClick={reload} className="mt-3 underline">
-              Try again
+          <div className="mt-6 bg-dots-dense p-6">
+            <StatusGlyph status="loading" label="Loading challenges..." />
+          </div>
+        ) : null}
+
+        {!loading && error ? (
+          <div className="mt-6 border border-dashed border-line-strong p-4" role="alert">
+            <StatusGlyph status="error" label={error} />
+            <button
+              type="button"
+              onClick={reload}
+              className="mt-3 inline-flex h-11 items-center justify-center border border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
+            >
+              retry
             </button>
           </div>
-        ) : challenges.length === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-            No challenges yet. Create one above.
-          </p>
-        ) : (
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="hidden grid-cols-[1fr_90px_80px_80px_110px_230px] gap-3 border-b border-slate-200 px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 md:grid">
-              <span>Title</span>
-              <span>Tier</span>
-              <span>Type</span>
-              <span>Points</span>
-              <span>Status</span>
-              <span className="text-right">Actions</span>
+        ) : null}
+
+        {!loading && !error && challenges.length === 0 ? (
+          <div className="mt-6 bg-dots-dense p-9 text-center">
+            <StatusGlyph status="unsolved" label="No challenges yet. Create one above." />
+          </div>
+        ) : null}
+
+        {!loading && !error && challenges.length > 0 ? (
+          <section className="mt-6 border border-line-strong bg-surface-1">
+            <div className="hidden grid-cols-[minmax(0,1fr)_120px_90px_90px_130px_320px] gap-4 border-b border-line-strong px-4 py-3 text-xs font-bold uppercase tracking-widest text-fg-muted lg:grid">
+              <span>title</span>
+              <span>difficulty</span>
+              <span>type</span>
+              <span className="text-right">points</span>
+              <span>status</span>
+              <span className="text-right">actions</span>
             </div>
+
             {challenges.map((challenge) => (
               <div
                 key={challenge.id}
-                className="grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 md:grid-cols-[1fr_90px_80px_80px_110px_230px] md:items-center"
+                className="grid gap-3 border-b border-dashed border-line p-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_120px_90px_90px_130px_320px] lg:items-center lg:gap-4"
               >
-                <div>
-                  <p className="font-medium">{challenge.title}</p>
-                  <p className="text-xs text-slate-500">Order {challenge.sort_order}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-fg">{challenge.title}</p>
+                  <p className="mt-1 text-xs tabular-nums text-fg-muted">order {challenge.sort_order}</p>
                 </div>
-                <span
-                  className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium capitalize ${tierStyles[challenge.tier] ?? 'bg-slate-100 text-slate-600'}`}
-                >
-                  {challenge.tier}
+                <DifficultyBlocks tier={challenge.tier} />
+                <span className="inline-flex h-6 w-fit items-center border border-line-strong px-2 text-[11px] uppercase tracking-widest text-fg-muted">
+                  [{challenge.type === 'web' ? 'WEB' : 'PY'}]
                 </span>
-                <span className="text-sm capitalize text-slate-600">{challenge.type}</span>
-                <span className="text-sm text-slate-700">{challenge.points}</span>
-                <span
-                  className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${
-                    challenge.published
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {challenge.published ? 'Published' : 'Draft'}
-                </span>
-                <div className="flex flex-wrap gap-2 md:justify-end">
+                <span className="text-sm font-bold tabular-nums text-fg lg:text-right">{challenge.points}</span>
+                <StatusGlyph
+                  status={challenge.published ? 'solved' : 'locked'}
+                  label={challenge.published ? 'published' : 'draft'}
+                  inverted={challenge.published}
+                />
+                <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link
                     to={`/admin/challenges/${challenge.id}`}
-                    className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    className="inline-flex h-11 items-center justify-center border border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3"
                   >
-                    Edit
+                    edit
                   </Link>
                   <button
                     type="button"
                     onClick={() => handleToggle(challenge)}
                     disabled={busyId === challenge.id}
-                    className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    className="inline-flex h-11 items-center justify-center border border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
                   >
-                    {challenge.published ? 'Unpublish' : 'Publish'}
+                    {challenge.published ? 'unpublish' : 'publish'}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(challenge)}
                     disabled={busyId === challenge.id}
-                    className="rounded-md border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                    aria-label={`Delete ${challenge.title}`}
+                    className="inline-flex h-11 items-center justify-center gap-2 border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
                   >
-                    Delete
+                    <X size={14} strokeWidth={1.75} aria-hidden="true" />
+                    delete
                   </button>
                 </div>
               </div>
             ))}
           </section>
-        )}
+        ) : null}
       </div>
     </main>
   )

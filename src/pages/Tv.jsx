@@ -1,39 +1,46 @@
 import { Link, useParams } from 'react-router-dom'
 import LeaderboardTable from '../components/LeaderboardTable'
 import Podium from '../components/Podium'
+import StatusGlyph from '../components/StatusGlyph'
 import { useCountdown } from '../hooks/useCountdown'
 import { useTvData } from '../hooks/useTvData'
 import { formatDuration } from '../lib/formatDuration'
+
+function FullScreenMessage({ children }) {
+  return (
+    <main className="flex min-h-svh items-center justify-center bg-bg px-8 text-center text-2xl text-fg">
+      {children}
+    </main>
+  )
+}
 
 export default function Tv() {
   const { roomCode } = useParams()
   const { room, rows, loading, error } = useTvData(roomCode)
   const remaining = useCountdown(room?.ends_at)
 
-  if (loading) {
-    return (
-      <main className="flex min-h-svh items-center justify-center bg-slate-950 text-2xl text-slate-400">
-        Loading leaderboard...
-      </main>
-    )
-  }
+  if (loading) return <FullScreenMessage>[…] loading leaderboard</FullScreenMessage>
 
   if (error) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-slate-950 px-8 text-center text-2xl text-red-300">
-        {error}
-      </main>
+      <FullScreenMessage>
+        <div className="border border-dashed border-line-strong p-6">
+          <StatusGlyph status="error" label={error} />
+        </div>
+      </FullScreenMessage>
     )
   }
 
   if (!room) {
     return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-4 bg-slate-950 text-white">
-        <p className="text-3xl font-semibold">Room not found</p>
-        <Link to="/" className="text-lg text-slate-400 underline">
-          Go to join
-        </Link>
-      </main>
+      <FullScreenMessage>
+        <div>
+          <p className="text-3xl font-bold">Room not found</p>
+          <Link to="/" className="mt-4 inline-block text-lg text-fg-muted underline">
+            Go to join
+          </Link>
+        </div>
+      </FullScreenMessage>
     )
   }
 
@@ -48,37 +55,45 @@ export default function Tv() {
   else if (remaining !== null) timerLabel = formatDuration(remaining)
 
   return (
-    <main className="min-h-svh bg-slate-950 px-10 py-6 text-white">
+    <main className="min-h-svh bg-bg px-6 py-6 text-fg md:px-10">
       <div className="mx-auto max-w-[1600px]">
-        <header className="flex items-start justify-between gap-8 border-b border-slate-800 pb-5">
+        <header className="flex flex-wrap items-start justify-between gap-6 border-b border-line-strong pb-5">
           <div>
-            <p className="text-sm font-medium uppercase tracking-widest text-slate-500">
+            <p className="text-sm font-bold uppercase tracking-widest text-fg-muted">
               ITP Competition · {room.code}
             </p>
-            <h1 className="mt-1 text-4xl font-bold tracking-tight">{room.name}</h1>
+            <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">{room.name}</h1>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium uppercase tracking-widest text-slate-500">Time left</p>
-            <p className="font-mono text-5xl font-semibold tabular-nums text-amber-300">{timerLabel}</p>
+          <div className="border border-line-strong bg-surface-1 px-5 py-3 text-right">
+            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">time left</p>
+            <p className="mt-1 text-4xl font-bold tabular-nums md:text-5xl">{timerLabel}</p>
           </div>
         </header>
 
-        {ended ? (
-          <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-3 text-center text-2xl font-semibold text-amber-200">
-            Final results
-          </p>
+        {room.status === 'live' && !ended ? (
+          <div className="mt-5 flex justify-end">
+            <StatusGlyph status="live" label="live round" />
+          </div>
         ) : null}
 
-        <section className="mt-6">
-          <h2 className="text-xl font-semibold uppercase tracking-wide text-slate-400">
-            {ended ? 'Final podium' : 'Top 3'}
+        {ended ? (
+          <div className="mt-5 bg-invert-bg px-5 py-3 text-center text-2xl font-bold text-invert-fg">
+            [✓] Final results
+          </div>
+        ) : null}
+
+        <section className="mt-9">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">
+            ## {ended ? 'Final podium' : 'Top 3'}
           </h2>
-          <Podium players={rows.slice(0, 3)} />
+          <div className="mt-4">
+            <Podium players={rows.slice(0, 3)} />
+          </div>
         </section>
 
-        <section className="mt-6">
-          <h2 className="mb-3 text-xl font-semibold uppercase tracking-wide text-slate-400">
-            {ended ? 'All players' : 'Standings'}
+        <section className="mt-9">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-fg-muted">
+            ## {ended ? 'All players' : 'Standings'}
           </h2>
           <LeaderboardTable players={ended ? rows : rows.slice(3)} />
         </section>

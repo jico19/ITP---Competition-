@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import AdminNav from '../../components/AdminNav'
+import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminChallenges } from '../../hooks/useAdminChallenges'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
 import { useJudgeScore } from '../../hooks/useJudgeScore'
@@ -7,10 +8,10 @@ import { useRoomPlayers } from '../../hooks/useRoomPlayers'
 
 function SelectorLabel({ children, value, onChange, disabled, options, placeholder }) {
   return (
-    <label className="block text-sm font-medium text-slate-700">
-      {children}
+    <label className="block">
+      <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">{children}</span>
       <select
-        className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+        className="mt-2 h-11 w-full border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none focus:border-fg disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
@@ -122,17 +123,17 @@ export default function Judge() {
   }))
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
+    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+      <div className="mx-auto w-full max-w-5xl">
         <header>
-          <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Admin · Judge</h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Judge</h1>
           <AdminNav />
         </header>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Select submission</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <section className="mt-6 border border-line-strong bg-surface-1 p-6">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## select submission</h2>
+          <div className="mt-4 grid gap-6 sm:grid-cols-3">
             <SelectorLabel
               value={roomId}
               onChange={handleRoomChange}
@@ -167,51 +168,45 @@ export default function Judge() {
             </SelectorLabel>
           </div>
 
-          {roomsError ? <p className="mt-3 text-sm text-red-600">{roomsError}</p> : null}
-          {playersError ? <p className="mt-3 text-sm text-red-600">{playersError}</p> : null}
-          {challengesError ? <p className="mt-3 text-sm text-red-600">{challengesError}</p> : null}
+          {roomsError ? <StatusGlyph status="error" label={roomsError} className="mt-4" /> : null}
+          {playersError ? <StatusGlyph status="error" label={playersError} className="mt-4" /> : null}
+          {challengesError ? <StatusGlyph status="error" label={challengesError} className="mt-4" /> : null}
           {roomId && players.length === 0 && !playersLoading && !playersError ? (
-            <p className="mt-3 text-sm text-slate-600">No players have joined this room yet.</p>
+            <StatusGlyph status="unsolved" label="No players have joined this room yet." className="mt-4" />
           ) : null}
           {!challengesLoading && webChallenges.length === 0 && !challengesError ? (
-            <p className="mt-3 text-sm text-slate-600">No published web challenges yet.</p>
+            <StatusGlyph status="unsolved" label="No published web challenges yet." className="mt-4" />
           ) : null}
         </section>
 
         {playerId && selectedChallenge ? (
-          <form onSubmit={handleSave} className="space-y-6">
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <form onSubmit={handleSave} className="mt-6 space-y-6">
+            <section className="border border-line-strong bg-surface-1 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">{selectedChallenge.title}</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Maximum {selectedChallenge.points} points
-                  </p>
+                  <h2 className="text-base font-bold text-fg">{selectedChallenge.title}</h2>
+                  <p className="mt-1 text-xs text-fg-muted">maximum {selectedChallenge.points} points</p>
                 </div>
-                {score.saved ? (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    Score saved
-                  </span>
-                ) : null}
+                {score.saved ? <StatusGlyph status="solved" inverted /> : null}
               </div>
 
               {score.loading ? (
-                <p className="mt-4 text-sm text-slate-600">Loading saved score...</p>
+                <StatusGlyph status="loading" label="Loading saved score..." className="mt-4" />
               ) : (
                 <div className="mt-4 space-y-3">
                   {rubricRows.map((row, index) => (
                     <label
                       key={row.label}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"
+                      className="flex flex-wrap items-center justify-between gap-3 border border-line-strong bg-surface-2 p-3 text-sm"
                     >
-                      <span className="font-medium text-slate-700">
-                        {index + 1}. {row.label}
-                        <span className="ml-2 text-xs font-normal text-slate-500">
+                      <span className="font-bold text-fg">
+                        {String(index + 1).padStart(2, '0')}. {row.label}
+                        <span className="ml-2 text-xs font-normal tabular-nums text-fg-muted">
                           max {row.max}
                         </span>
                       </span>
                       <input
-                        className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                        className="h-11 w-24 border border-line-strong bg-surface-2 px-3 text-sm tabular-nums text-fg outline-none focus:border-fg"
                         type="number"
                         min="0"
                         max={row.max}
@@ -224,34 +219,40 @@ export default function Judge() {
                 </div>
               )}
 
-              <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
-                <span className="text-sm font-medium text-slate-600">Running total</span>
-                <span className="font-mono text-lg font-semibold tabular-nums">
+              <div className="mt-4 flex items-center justify-between border-t border-dashed border-line pt-4">
+                <span className="text-xs font-bold uppercase tracking-widest text-fg-muted">running total</span>
+                <span className="text-lg font-bold tabular-nums text-fg">
                   {total} / {selectedChallenge.points}
                 </span>
               </div>
             </section>
 
-            {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-            {score.error ? <p className="text-sm text-red-600">{score.error}</p> : null}
+            {formError ? (
+              <div className="border border-dashed border-line-strong p-3" role="alert">
+                <StatusGlyph status="error" label={formError} />
+              </div>
+            ) : null}
+            {score.error ? (
+              <div className="border border-dashed border-line-strong p-3" role="alert">
+                <StatusGlyph status="error" label={score.error} />
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="submit"
                 disabled={!playerId || score.loading || score.saving}
-                className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted"
               >
-                {score.saving ? 'Saving...' : score.saved ? 'Update score' : 'Save score'}
+                {score.saving ? '[...] saving' : '> save score'}
               </button>
-              <span className="text-sm text-slate-600">
-                Scores update the leaderboard immediately.
-              </span>
+              <span className="text-xs text-fg-muted">Scores update the leaderboard immediately.</span>
             </div>
           </form>
         ) : (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            Choose a player and web challenge to start judging.
-          </p>
+          <div className="mt-6 bg-dots-dense p-9 text-center">
+            <StatusGlyph status="unsolved" label="Choose a player and web challenge to start judging." />
+          </div>
         )}
       </div>
     </main>

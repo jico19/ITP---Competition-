@@ -1,18 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ExternalLink } from 'lucide-react'
 import AdminNav from '../../components/AdminNav'
+import RoomPlayers from '../../components/RoomPlayers'
+import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
 import { getReadableError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 import { useSessionStore } from '../../stores/sessionStore'
 
-const statusStyles = {
-  lobby: 'bg-slate-200 text-slate-700',
-  live: 'bg-green-100 text-green-700',
-  ended: 'bg-slate-300 text-slate-600',
-}
-
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+const roomStatus = {
+  lobby: { status: 'locked', label: 'waiting for go' },
+  live: { status: 'solved', label: 'live', inverted: true },
+  ended: { status: 'locked', label: 'ended' },
+}
 
 function generateCode() {
   const bytes = new Uint8Array(6)
@@ -24,6 +27,20 @@ function generateCode() {
 
   return code
 }
+
+function toLocalInput(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+const inputClass =
+  'h-11 w-full border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-fg'
+const secondaryButton =
+  'inline-flex h-11 items-center justify-center gap-2 border border-line-strong bg-transparent px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50'
+const primaryButton =
+  'inline-flex h-11 items-center justify-center border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted'
 
 export default function Rooms() {
   const navigate = useNavigate()
@@ -38,6 +55,24 @@ export default function Rooms() {
   const [minutes, setMinutes] = useState({})
   const [busyId, setBusyId] = useState('')
   const [actionError, setActionError] = useState('')
+  const [editingId, setEditingId] = useState('')
+  const [draft, setDraft] = useState({ name: '', code: '', status: 'lobby', endsAt: '' })
+  const [deleteId, setDeleteId] = useState('')
+  const [deleteCode, setDeleteCode] = useState('')
+  const [playersOpenId, setPlayersOpenId] = useState('')
+
+  function openEdit(room) {
+    setEditingId(room.id)
+    setDeleteId('')
+    setDeleteCode('')
+    setActionError('')
+    setDraft({
+      name: room.name,
+      code: room.code,
+      status: room.status,
+      endsAt: toLocalInput(room.ends_at),
+    })
+  }
 
   async function handleCreate(event) {
     event.preventDefault()
@@ -146,6 +181,96 @@ export default function Rooms() {
     }
   }
 
+  async function handleSave(event, room) {
+    event.preventDefault()
+
+    const trimmed = draft.name.trim()
+    const normalizedCode = draft.code.trim().toUpperCase()
+    const previousEnd = toLocalInput(room.ends_at)
+
+    if (!trimmed) {
+      setActionError('Room name is required.')
+      return
+    }
+    if (!/^[A-Z0-9]{4,8}$/.test(normalizedCode)) {
+      setActionError('Code must be 4 to 8 letters or digits.')
+      return
+    }
+    if (draft.status === 'live') {
+      if (!draft.endsAt) {
+        setActionError('Choose an end time for a live room.')
+        return
+      }
+      const end = new Date(draft.endsAt)
+      if (Number.isNaN(end.getTime())) {
+        setActionError('End time is not valid.')
+        return
+      }
+      if ((room.status !== 'live' || draft.endsAt !== previousEnd) && end.getTime() <= Date.now()) {
+        setActionError('End time must be in the future.')
+        return
+      }
+    }
+
+    setBusyId(room.id)
+    setActionError('')
+
+    try {
+      if (normalizedCode !== room.code) {
+        const { data: existing, error: checkError } = await supabase
+          .from('rooms')
+          .select('id')
+          .eq('code', normalizedCode)
+          .neq('id', room.id)
+          .maybeSingle()
+        if (checkError) throw checkError
+        if (existing) throw new Error('That code is already taken.')
+      }
+
+      let endsAt = null
+      if (draft.status === 'live') endsAt = new Date(draft.endsAt).toISOString()
+      if (draft.status === 'ended') endsAt = new Date().toISOString()
+
+      const { error: updateError } = await supabase
+        .from('rooms')
+        .update({ name: trimmed, code: normalizedCode, status: draft.status, ends_at: endsAt })
+        .eq('id', room.id)
+      if (updateError) throw updateError
+
+      setEditingId('')
+      await reload()
+    } catch (err) {
+      setActionError(getReadableError(err, 'Could not update room.'))
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function handleDelete(room) {
+    if (deleteCode.trim().toUpperCase() !== room.code) {
+      setActionError(`Type ${room.code} to delete this room.`)
+      return
+    }
+
+    setBusyId(room.id)
+    setActionError('')
+
+    try {
+      const { error: deleteError } = await supabase.from('rooms').delete().eq('id', room.id)
+      if (deleteError) throw deleteError
+
+      setDeleteId('')
+      setDeleteCode('')
+      setEditingId('')
+      setPlayersOpenId('')
+      await reload()
+    } catch (err) {
+      setActionError(getReadableError(err, 'Could not delete room.'))
+    } finally {
+      setBusyId('')
+    }
+  }
+
   async function handleSignOut() {
     const { error: signOutError } = await supabase.auth.signOut()
     if (signOutError) {
@@ -157,43 +282,49 @@ export default function Rooms() {
   }
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+      <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Admin · Rooms</h1>
+            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Rooms</h1>
             <AdminNav />
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white"
-          >
-            Sign out
+          <button type="button" onClick={handleSignOut} className={secondaryButton}>
+            sign out
           </button>
         </header>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Create room</h2>
-          <form className="mt-4 space-y-3" onSubmit={handleCreate}>
-            <div className="flex flex-col gap-3 sm:flex-row">
+        <section className="mt-6 border border-line-strong bg-surface-1 p-6">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">## create room</h2>
+          <form className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end" onSubmit={handleCreate}>
+            <label className="min-w-0 flex-1">
+              <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">name</span>
               <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                className={`mt-2 ${inputClass}`}
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Room name"
+                placeholder="Round 1"
                 maxLength={60}
                 required
               />
-              <div className="flex gap-2 sm:w-64">
+            </label>
+            <div className="min-w-0 lg:w-80">
+              <label
+                htmlFor="room-code"
+                className="block text-xs font-bold uppercase tracking-widest text-fg-muted"
+              >
+                code
+              </label>
+              <div className="mt-2 flex gap-2">
                 <input
-                  className="w-24 rounded-md border border-slate-300 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  id="room-code"
+                  className={`${inputClass} min-w-0 flex-1 uppercase`}
                   type="text"
                   value={code}
                   onChange={(event) => setCode(event.target.value.toUpperCase())}
-                  placeholder="Code"
+                  placeholder="A1B2C3"
                   aria-label="Room code, optional"
                   maxLength={6}
                 />
@@ -203,131 +334,296 @@ export default function Rooms() {
                     setCreateError('')
                     setCode(generateCode())
                   }}
-                  className="shrink-0 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className={secondaryButton}
                 >
-                  Generate code
+                  generate
                 </button>
               </div>
-              <button
-                type="submit"
-                className="shrink-0 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={creating}
-              >
-                {creating ? 'Creating...' : 'Create room'}
-              </button>
             </div>
-            <p className="text-xs text-slate-500">
-              Optional: generate a 6-character code with at least one letter and one number. Leave blank for the default code.
-            </p>
+            <button type="submit" disabled={creating} className={primaryButton}>
+              {creating ? '$ creating...' : '$ create room'}
+            </button>
           </form>
-          {createError ? <p className="mt-3 text-sm text-red-600">{createError}</p> : null}
+          <p className="mt-3 text-xs text-fg-muted">
+            Optional: generate a 6-character code with at least one letter and one number. Leave blank for the default code.
+          </p>
+          {createError ? (
+            <div className="mt-3 border border-dashed border-line-strong p-3" role="alert">
+              <StatusGlyph status="error" label={createError} />
+            </div>
+          ) : null}
           {createdCode ? (
-            <p className="mt-3 text-sm text-green-700">
-              Room created. Join code: <span className="font-mono font-semibold">{createdCode}</span>
-            </p>
+            <div className="mt-3 bg-invert-bg px-3 py-2 text-sm font-bold text-invert-fg">
+              <StatusGlyph status="solved" label={`room created · code ${createdCode}`} inverted />
+            </div>
           ) : null}
         </section>
 
-        {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
+        {actionError ? (
+          <div className="mt-6 border border-dashed border-line-strong p-3" role="alert">
+            <StatusGlyph status="error" label={actionError} />
+          </div>
+        ) : null}
 
         {loading ? (
-          <p className="text-sm text-slate-600">Loading rooms...</p>
-        ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-            <p>{error}</p>
-            <button type="button" onClick={reload} className="mt-3 underline">
-              Try again
+          <div className="mt-6 bg-dots-dense p-6">
+            <StatusGlyph status="loading" label="Loading rooms..." />
+          </div>
+        ) : null}
+
+        {!loading && error ? (
+          <div className="mt-6 border border-dashed border-line-strong p-4" role="alert">
+            <StatusGlyph status="error" label={error} />
+            <button
+              type="button"
+              onClick={reload}
+              className={`mt-3 ${secondaryButton}`}
+            >
+              retry
             </button>
           </div>
-        ) : rooms.length === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-            No rooms yet. Create one above.
-          </p>
-        ) : (
-          <section className="space-y-3">
-            {rooms.map((room) => (
-              <article
-                key={room.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-semibold">{room.name}</h2>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyles[room.status] ?? ''}`}
-                      >
-                        {room.status}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Code <span className="font-mono font-semibold text-slate-900">{room.code}</span>
-                      {' · '}
-                      {counts[room.id] ?? 0} {counts[room.id] === 1 ? 'player' : 'players'}
-                    </p>
-                    {room.ends_at ? (
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Ends {new Date(room.ends_at).toLocaleString()}
+        ) : null}
+
+        {!loading && !error && rooms.length === 0 ? (
+          <div className="mt-6 bg-dots-dense p-9 text-center">
+            <StatusGlyph status="unsolved" label="No rooms yet. Create one above." />
+          </div>
+        ) : null}
+
+        {!loading && !error && rooms.length > 0 ? (
+          <section className="mt-6 space-y-6">
+            {rooms.map((room) => {
+              const status = roomStatus[room.status] ?? roomStatus.ended
+              return (
+                <article key={room.id} className="border border-line-strong bg-surface-1 p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-base font-bold text-fg">{room.name}</h2>
+                        <StatusGlyph {...status} />
+                      </div>
+                      <p className="mt-2 text-sm text-fg-muted">
+                        code <span className="font-bold tabular-nums text-fg">{room.code}</span>
+                        {' · '}
+                        <span className="tabular-nums">{counts[room.id] ?? 0}</span>{' '}
+                        {counts[room.id] === 1 ? 'player' : 'players'}
                       </p>
-                    ) : null}
-                  </div>
+                      {room.ends_at ? (
+                        <p className="mt-1 text-xs text-fg-muted">
+                          ends {new Date(room.ends_at).toLocaleString()}
+                        </p>
+                      ) : null}
+                    </div>
 
-                  <a
-                    href={`/tv/${room.code}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Open TV ↗
-                  </a>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
-                  {room.status === 'lobby' ? (
-                    <>
-                      <label className="text-sm text-slate-600">
-                        Duration (minutes)
-                        <input
-                          className="ml-2 w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                          type="number"
-                          min="1"
-                          max="1440"
-                          value={minutes[room.id] ?? 10}
-                          onChange={(event) =>
-                            setMinutes((previous) => ({ ...previous, [room.id]: event.target.value }))
-                          }
-                        />
-                      </label>
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleStart(room)}
+                        onClick={() => openEdit(room)}
                         disabled={busyId === room.id}
-                        className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className={secondaryButton}
                       >
-                        Start
+                        edit
                       </button>
-                    </>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteId(deleteId === room.id ? '' : room.id)
+                          setDeleteCode('')
+                          setEditingId('')
+                          setActionError('')
+                        }}
+                        disabled={busyId === room.id}
+                        className="inline-flex h-11 items-center justify-center gap-2 border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
+                      >
+                        [×] delete
+                      </button>
+                      <a
+                        href={`/tv/${room.code}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={secondaryButton}
+                      >
+                        <ExternalLink size={14} strokeWidth={1.75} aria-hidden="true" />
+                        open tv
+                      </a>
+                    </div>
+                  </div>
+
+                  {deleteId === room.id ? (
+                    <div className="mt-4 border border-dashed border-line-strong bg-surface-2 p-4">
+                      <StatusGlyph
+                        status="error"
+                        label={`Delete ${room.name}? This permanently removes its players, scores, and submissions.`}
+                      />
+                      <div className="mt-3 flex flex-wrap items-end gap-2">
+                        <label>
+                          <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">
+                            type {room.code}
+                          </span>
+                          <input
+                            type="text"
+                            value={deleteCode}
+                            onChange={(event) => setDeleteCode(event.target.value.toUpperCase())}
+                            placeholder={room.code}
+                            aria-label={`Type ${room.code} to confirm deletion`}
+                            className={`mt-2 ${inputClass} w-32 uppercase`}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(room)}
+                          disabled={busyId === room.id || deleteCode.trim().toUpperCase() !== room.code}
+                          className="inline-flex h-11 items-center justify-center border border-dashed border-line-strong px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50"
+                        >
+                          confirm delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteId('')
+                            setDeleteCode('')
+                          }}
+                          disabled={busyId === room.id}
+                          className={secondaryButton}
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
 
-                  {room.status === 'live' ? (
+                  {editingId === room.id ? (
+                    <form
+                      onSubmit={(event) => handleSave(event, room)}
+                      className="mt-4 space-y-4 border border-line-strong bg-surface-2 p-4"
+                    >
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <label>
+                          <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">name</span>
+                          <input
+                            type="text"
+                            value={draft.name}
+                            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                            maxLength={60}
+                            className={`mt-2 ${inputClass}`}
+                          />
+                        </label>
+                        <label>
+                          <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">code</span>
+                          <input
+                            type="text"
+                            value={draft.code}
+                            onChange={(event) =>
+                              setDraft({ ...draft, code: event.target.value.toUpperCase() })
+                            }
+                            maxLength={8}
+                            className={`mt-2 ${inputClass} uppercase`}
+                          />
+                        </label>
+                        <label>
+                          <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">status</span>
+                          <select
+                            value={draft.status}
+                            onChange={(event) => setDraft({ ...draft, status: event.target.value })}
+                            className={`mt-2 ${inputClass}`}
+                          >
+                            <option value="lobby">lobby</option>
+                            <option value="live">live</option>
+                            <option value="ended">ended</option>
+                          </select>
+                        </label>
+                        {draft.status === 'live' ? (
+                          <label>
+                            <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">ends at</span>
+                            <input
+                              type="datetime-local"
+                              value={draft.endsAt}
+                              onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })}
+                              className={`mt-2 ${inputClass}`}
+                            />
+                          </label>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="submit" disabled={busyId === room.id} className={primaryButton}>
+                          save room
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId('')}
+                          disabled={busyId === room.id}
+                          className={secondaryButton}
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-dashed border-line pt-4">
+                    {room.status === 'lobby' ? (
+                      <>
+                        <label>
+                          <span className="block text-xs font-bold uppercase tracking-widest text-fg-muted">
+                            duration (minutes)
+                          </span>
+                          <input
+                            className={`mt-2 ${inputClass} w-28 tabular-nums`}
+                            type="number"
+                            min="1"
+                            max="1440"
+                            value={minutes[room.id] ?? 10}
+                            onChange={(event) =>
+                              setMinutes((previous) => ({ ...previous, [room.id]: event.target.value }))
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleStart(room)}
+                          disabled={busyId === room.id}
+                          className={primaryButton}
+                        >
+                          go
+                        </button>
+                        <p className="w-full text-xs text-fg-muted">
+                          Press GO to start the timer and unlock player editors.
+                        </p>
+                      </>
+                    ) : null}
+
+                    {room.status === 'live' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleEnd(room)}
+                        disabled={busyId === room.id}
+                        className={secondaryButton}
+                      >
+                        end room
+                      </button>
+                    ) : null}
+
+                    {room.status === 'lobby' || room.status === 'live' ? null : (
+                      <StatusGlyph status="locked" label="This room is finished." />
+                    )}
+
                     <button
                       type="button"
-                      onClick={() => handleEnd(room)}
-                      disabled={busyId === room.id}
-                      className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() =>
+                        setPlayersOpenId(playersOpenId === room.id ? '' : room.id)
+                      }
+                      className={secondaryButton}
                     >
-                      End room
+                      players ({counts[room.id] ?? 0})
                     </button>
-                  ) : null}
+                  </div>
 
-                  {room.status === 'lobby' || room.status === 'live' ? null : (
-                    <span className="text-sm text-slate-500">This room is finished.</span>
-                  )}
-                </div>
-              </article>
-            ))}
+                  {playersOpenId === room.id ? <RoomPlayers room={room} onRemoved={reload} /> : null}
+                </article>
+              )
+            })}
           </section>
-        )}
+        ) : null}
       </div>
     </main>
   )

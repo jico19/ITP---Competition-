@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getReadableError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 
@@ -6,6 +6,8 @@ const empty = { players: [], error: '' }
 
 export function useRoomPlayers(roomId) {
   const [data, setData] = useState({ key: null, ...empty })
+  const [reloadToken, setReloadToken] = useState(0)
+  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
   useEffect(() => {
     if (!roomId) return
@@ -37,8 +39,8 @@ export function useRoomPlayers(roomId) {
     return () => {
       active = false
     }
-  }, [roomId])
+  }, [roomId, reloadToken])
 
   const current = data.key === roomId ? data : empty
-  return { ...current, loading: Boolean(roomId) && data.key !== roomId }
+  return { ...current, loading: Boolean(roomId) && data.key !== roomId, reload }
 }

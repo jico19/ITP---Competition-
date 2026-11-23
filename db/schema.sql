@@ -33,6 +33,7 @@ create table public.profiles (
   id           uuid primary key references auth.users(id) on delete cascade,
   display_name text not null check (char_length(display_name) between 1 and 24),
   room_id      uuid not null references public.rooms(id) on delete cascade,
+  last_seen_at timestamptz not null default now(),   -- presence heartbeat
   created_at   timestamptz not null default now()
 );
 create index profiles_room_idx on public.profiles(room_id);
@@ -141,7 +142,9 @@ begin
   insert into public.profiles (id, display_name, room_id)
   values (auth.uid(), v_name, r.id)
   on conflict (id) do update
-    set display_name = excluded.display_name, room_id = excluded.room_id
+    set display_name = excluded.display_name,
+        room_id = excluded.room_id,
+        last_seen_at = now()
   returning * into result;
 
   return result;
@@ -149,6 +152,44 @@ end $$;
 
 revoke execute on function public.join_room(text, text) from public, anon;
 grant  execute on function public.join_room(text, text) to authenticated;
+
+-- Presence heartbeat. The app pings set_presence(true) every 20s while the
+-- tab is open and set_presence(false) when it closes. Players not seen for
+-- 90s are hidden from the leaderboard; their profiles and scores are kept,
+-- so reopening the tab brings them back with their points.
+create or replace function public.set_presence(p_online boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Not signed in'; end if;
+
+  update public.profiles
+     set last_seen_at = case when p_online then now()
+                             else now() - interval '2 minutes' end
+   where id = auth.uid();
+end $$;
+
+revoke execute on function public.set_presence(boolean) from public, anon;
+grant  execute on function public.set_presence(boolean) to authenticated;
+
+-- ---------- Admin player management ----------
+-- Remove a player. Deleting the profile cascades submissions, scores,
+-- judge_scores, and first_solves.
+create or replace function public.admin_remove_player(p_player_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Not authorized';
+  end if;
+
+  delete from public.profiles where id = p_player_id;
+end $$;
+
+revoke execute on function public.admin_remove_player(uuid) from public, anon;
+grant execute on function public.admin_remove_player(uuid) to authenticated;
 
 -- Validate a python submission and compute its points server-side.
 create or replace function public.before_submission()
@@ -260,6 +301,7 @@ create trigger judge_scores_after after insert or update on public.judge_scores
 -- =====================================================================
 -- Leaderboard view (public; runs with owner rights on purpose)
 -- Ranking: total points desc, then who reached their score first.
+-- Players who stopped heartbeating (>90s ago) are hidden as "left".
 -- =====================================================================
 create or replace view public.leaderboard as
 with bonus as (
@@ -291,6 +333,7 @@ from public.profiles p
 left join public.scores s on s.user_id = p.id
 left join bonus b on b.user_id = p.id and b.room_id = p.room_id
 left join solved v on v.user_id = p.id
+where p.last_seen_at > now() - interval '90 seconds'
 group by p.id, p.display_name, p.room_id, b.points, b.awarded_at, v.solved;
 
 grant select on public.leaderboard to anon, authenticated;

@@ -7,6 +7,7 @@ Live coding competition web app for a college web dev team (event: Nov 27, ~20-4
 - React (Vite, plain JS/JSX), TailwindCSS, `react-router-dom`
 - Supabase: anonymous auth, Postgres, Realtime (`@supabase/supabase-js`)
 - Editor: `@uiw/react-codemirror` + `@codemirror/lang-python`
+- Icons: `lucide-react` for actions/navigation; glyphs for status (see `design.md`)
 - Python runs in the browser via **Pyodide in a Web Worker**. No backend server.
 - State: Zustand for shared/client state; hooks for local/component logic.
 - Ask before adding any other dependency.
@@ -32,7 +33,7 @@ Web challenges (type `web`) are judged in person; the judge enters rubric points
 ## Rules
 - General: `docs/rules/rules.md`
 - DB/Supabase security & data flow: `docs/rules/security.md` (read before any Supabase code)
-- UI: `docs/rules/ui.md`
+- UI: `design.md` (visual system) + `docs/rules/ui.md` (route-specific rules)
 - If rules conflict with the latest user message, follow the user and mention it.
 
 ## Test formats (`challenges.tests`, jsonb array)

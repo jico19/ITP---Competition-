@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminStatus } from '../../hooks/useAdminStatus'
 import { getReadableError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
@@ -43,8 +44,8 @@ export default function Login() {
 
   if (status === 'loading') {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-slate-50 px-4 text-slate-600">
-        Checking admin access...
+      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+        <StatusGlyph status="loading" label="Checking admin access..." />
       </main>
     )
   }
@@ -54,57 +55,64 @@ export default function Login() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-slate-50 px-4 py-10 text-slate-900">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-medium text-slate-500">ITP Competition</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Admin sign in</h1>
-        <p className="mt-2 text-sm text-slate-600">Use your admin email and password.</p>
+    <main className="mx-auto flex min-h-svh w-full max-w-xl items-center px-4 py-10 md:px-6">
+      <div className="w-full border border-line-strong bg-surface-1 p-6 md:p-9">
+        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin sign in</h1>
+        <p className="mt-3 text-sm text-fg-muted">Use your admin email and password.</p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="admin-email">
-              Email
-            </label>
-            <input
-              id="admin-email"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="username"
-              required
-            />
+        <div className="mt-6 border border-line-strong bg-surface-2">
+          <div className="flex h-8 items-center gap-2 border-b border-line px-3 text-xs text-fg-muted">
+            <span aria-hidden="true">■ □ □</span>
+            <span>~/admin/login</span>
           </div>
+          <form className="space-y-6 p-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-fg-muted" htmlFor="admin-email">
+                email
+              </label>
+              <input
+                id="admin-email"
+                className="mt-2 h-11 w-full border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-fg"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="username"
+                placeholder="admin@example.com"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="admin-password">
-              Password
-            </label>
-            <input
-              id="admin-password"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-fg-muted" htmlFor="admin-password">
+                password
+              </label>
+              <input
+                id="admin-password"
+                className="mt-2 h-11 w-full border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-fg"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
 
-          {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-              {error}
-            </p>
-          ) : null}
+            {error ? (
+              <div className="border border-dashed border-line-strong p-3" role="alert">
+                <StatusGlyph status="error" label={error} />
+              </div>
+            ) : null}
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-11 w-full border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted"
+            >
+              {loading ? '$ signing in...' : '$ sign in'}
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   )
