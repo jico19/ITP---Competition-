@@ -32,6 +32,7 @@ self.onmessage = async (event) => {
     const results = []
 
     for (const test of tests) {
+      const startTime = performance.now()
       py.globals.set(
         '_payload',
         JSON.stringify({
@@ -42,7 +43,9 @@ self.onmessage = async (event) => {
           visible: Boolean(test.visible),
         }),
       )
-      results.push(JSON.parse(py.runPython('_run_from_payload()')))
+      const res = JSON.parse(py.runPython('_run_from_payload()'))
+      res.duration = Math.max(1, Math.round(performance.now() - startTime))
+      results.push(res)
     }
 
     self.postMessage({

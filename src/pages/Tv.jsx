@@ -1,14 +1,18 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { animate, scrambleText, stagger } from 'animejs'
 import LeaderboardTable from '../components/LeaderboardTable'
 import Podium from '../components/Podium'
 import StatusGlyph from '../components/StatusGlyph'
 import { useCountdown } from '../hooks/useCountdown'
 import { useTvData } from '../hooks/useTvData'
 import { formatDuration } from '../lib/formatDuration'
+import { prefersReducedMotion } from '../lib/motion'
+import { useSessionStore } from '../stores/sessionStore'
 
 function FullScreenMessage({ children }) {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-bg px-8 text-center text-2xl text-fg">
+    <main className="flex min-h-svh items-center justify-center bg-bg px-8 text-center text-2xl text-fg font-mono">
       {children}
     </main>
   )
@@ -16,15 +20,38 @@ function FullScreenMessage({ children }) {
 
 export default function Tv() {
   const { roomCode } = useParams()
-  const { room, rows, loading, error } = useTvData(roomCode)
+  const profile = useSessionStore((s) => s.profile)
+  const { room, rows, totalChallenges, updatedAt, loading, error } = useTvData(roomCode)
   const remaining = useCountdown(room?.ends_at)
 
-  if (loading) return <FullScreenMessage>[…] loading leaderboard</FullScreenMessage>
+  const [activeTab, setActiveTab] = useState('global')
+  const [now, setNow] = useState(() => Date.now())
+
+  const containerRef = useRef(null)
+  const hasAnimatedRef = useRef(false)
+  const titleRef = useRef(null)
+  const timerRef = useRef(null)
+  const prevTimerRef = useRef('')
+  const updatedLabelRef = useRef(null)
+  const prevUpdatedRef = useRef('')
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const secondsAgo = updatedAt ? Math.max(0, Math.floor((now - updatedAt) / 1000)) : 0
+
+  if (loading) {
+    return <FullScreenMessage>[…] loading leaderboard</FullScreenMessage>
+  }
 
   if (error) {
     return (
       <FullScreenMessage>
-        <div className="border border-dashed border-line-strong p-6">
+        <div className="border border-dashed border-line-strong p-6 bg-surface-1">
           <StatusGlyph status="error" label={error} />
         </div>
       </FullScreenMessage>
@@ -36,9 +63,14 @@ export default function Tv() {
       <FullScreenMessage>
         <div>
           <p className="text-3xl font-bold">Room not found</p>
-          <Link to="/" className="mt-4 inline-block text-lg text-fg-muted underline">
-            Go to join
-          </Link>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-lg text-fg-muted">
+            <Link to="/leaderboard" className="underline">
+              Try another code
+            </Link>
+            <Link to="/" className="underline">
+              Go to join
+            </Link>
+          </div>
         </div>
       </FullScreenMessage>
     )
@@ -48,54 +80,233 @@ export default function Tv() {
     room.status === 'ended' || (room.ends_at && remaining !== null && remaining <= 0),
   )
 
-  let timerLabel = 'Timer not set'
+  let timerLabel = ''
   if (ended) timerLabel = "Time's up"
-  else if (room.status === 'lobby') timerLabel = 'Waiting for start'
-  else if (remaining !== null && remaining <= 0) timerLabel = "Time's up"
-  else if (remaining !== null) timerLabel = formatDuration(remaining)
+  else if (room.status === 'lobby') timerLabel = 'Lobby'
+  else if (remaining !== null && remaining > 0) timerLabel = `${formatDuration(remaining)} left`
+
+  const updatedMinutes = String(Math.floor(secondsAgo / 60)).padStart(2, '0')
+  const updatedSeconds = String(secondsAgo % 60).padStart(2, '0')
+  const updatedString = `updated ${updatedMinutes}:${updatedSeconds} ago`
+
+  const top3 = rows.slice(0, 3)
+  const restRows = rows.slice(3)
 
   return (
-    <main className="min-h-svh bg-bg px-6 py-6 text-fg md:px-10">
-      <div className="mx-auto max-w-[1600px]">
-        <header className="flex flex-wrap items-start justify-between gap-6 border-b border-line-strong pb-5">
+    <TvContent
+      containerRef={containerRef}
+      hasAnimatedRef={hasAnimatedRef}
+      titleRef={titleRef}
+      timerRef={timerRef}
+      prevTimerRef={prevTimerRef}
+      updatedLabelRef={updatedLabelRef}
+      prevUpdatedRef={prevUpdatedRef}
+      loading={loading}
+      room={room}
+      ended={ended}
+      timerLabel={timerLabel}
+      updatedString={updatedString}
+      top3={top3}
+      restRows={restRows}
+      totalChallenges={totalChallenges}
+      profile={profile}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+    />
+  )
+}
+
+function TvContent({
+  containerRef,
+  hasAnimatedRef,
+  titleRef,
+  timerRef,
+  prevTimerRef,
+  updatedLabelRef,
+  prevUpdatedRef,
+  loading,
+  room,
+  ended,
+  timerLabel,
+  updatedString,
+  top3,
+  restRows,
+  totalChallenges,
+  profile,
+  activeTab,
+  setActiveTab,
+}) {
+  // Entrance animation — runs once when data is ready
+  useEffect(() => {
+    if (loading || hasAnimatedRef.current || !containerRef.current) return
+    if (prefersReducedMotion()) return
+    hasAnimatedRef.current = true
+
+    const container = containerRef.current
+
+    // Header slide-in
+    const header = container.querySelector('.tv-header')
+    if (header) {
+      animate(header, {
+        translateY: [-12, 0],
+        opacity: [0, 1],
+        duration: 200,
+        ease: 'steps(3)',
+      })
+    }
+
+    // Title scramble decrypt
+    if (titleRef.current) {
+      animate(titleRef.current, {
+        textContent: scrambleText({
+          text: '# Leaderboard',
+          revealRate: 25,
+          chars: 'A-Z0-9#_[]·',
+        }),
+      })
+    }
+
+    // Podium cards stagger-in
+    const podiumCards = container.querySelectorAll('.tv-podium-card')
+    if (podiumCards.length) {
+      animate(podiumCards, {
+        translateY: [16, 0],
+        opacity: [0, 1],
+        duration: 220,
+        ease: 'steps(3)',
+        delay: stagger(80, { start: 100 }),
+      })
+    }
+
+    // Standings table slide-in
+    const standings = container.querySelector('.tv-standings')
+    if (standings) {
+      animate(standings, {
+        translateY: [12, 0],
+        opacity: [0, 1],
+        duration: 200,
+        ease: 'steps(3)',
+        delay: 280,
+      })
+    }
+  }, [loading, containerRef, hasAnimatedRef, titleRef])
+
+  // Timer label scramble on each tick
+  useEffect(() => {
+    if (!timerRef.current || prefersReducedMotion()) return
+    if (timerLabel === prevTimerRef.current) return
+    prevTimerRef.current = timerLabel
+
+    animate(timerRef.current, {
+      textContent: scrambleText({
+        text: timerLabel || '',
+        revealRate: 40,
+        chars: '0-9:',
+      }),
+    })
+  }, [timerLabel, timerRef, prevTimerRef])
+
+  // "Updated X ago" counter scramble
+  useEffect(() => {
+    if (!updatedLabelRef.current || prefersReducedMotion()) return
+    if (updatedString === prevUpdatedRef.current) return
+    prevUpdatedRef.current = updatedString
+
+    animate(updatedLabelRef.current, {
+      textContent: scrambleText({
+        text: updatedString,
+        revealRate: 50,
+        chars: '0-9:',
+      }),
+    })
+  }, [updatedString, updatedLabelRef, prevUpdatedRef])
+
+  return (
+    <main ref={containerRef} className="min-h-svh bg-bg bg-grid-soft px-4 py-6 md:px-8 text-fg">
+      <div className="mx-auto max-w-6xl">
+        {/* Page Header */}
+        <section className="tv-header flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-line pb-6">
           <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-fg-muted">
-              ITP Competition · {room.code}
-            </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">{room.name}</h1>
+            <h1
+              ref={titleRef}
+              className="font-mono text-3xl md:text-4xl font-bold tracking-tight text-fg"
+            >
+              # Leaderboard
+            </h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 font-mono text-xs text-fg-muted">
+              <span>~/leaderboard</span>
+              <span>·</span>
+              {room.status === 'live' && !ended ? (
+                <span className="flex items-center gap-1.5 text-fg font-bold">
+                  <span className="inline-block h-2 w-2 rounded-full bg-fg live-pulse" />
+                  <span>live</span>
+                </span>
+              ) : ended ? (
+                <span>[✓] ended</span>
+              ) : (
+                <span>[ ] waiting</span>
+              )}
+              {timerLabel ? (
+                <>
+                  <span>·</span>
+                  <span ref={timerRef} className="tabular-nums font-bold">{timerLabel}</span>
+                </>
+              ) : null}
+              <span>·</span>
+              <span ref={updatedLabelRef} className="tabular-nums">{updatedString}</span>
+              {room.code ? (
+                <>
+                  <span>·</span>
+                  <span className="font-bold">[{room.code}]</span>
+                </>
+              ) : null}
+            </div>
           </div>
-          <div className="border border-line-strong bg-surface-1 px-5 py-3 text-right">
-            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">time left</p>
-            <p className="mt-1 text-4xl font-bold tabular-nums md:text-5xl">{timerLabel}</p>
-          </div>
-        </header>
 
-        {room.status === 'live' && !ended ? (
-          <div className="mt-5 flex justify-end">
-            <StatusGlyph status="live" label="live round" />
-          </div>
-        ) : null}
-
-        {ended ? (
-          <div className="mt-5 bg-invert-bg px-5 py-3 text-center text-2xl font-bold text-invert-fg">
-            [✓] Final results
-          </div>
-        ) : null}
-
-        <section className="mt-9">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-fg-muted">
-            ## {ended ? 'Final podium' : 'Top 3'}
-          </h2>
-          <div className="mt-4">
-            <Podium players={rows.slice(0, 3)} />
+          {/* Scope Filter Tabs */}
+          <div
+            className="flex items-center gap-1.5 self-start sm:self-auto font-mono text-xs"
+            role="group"
+            aria-label="Leaderboard scope filters"
+          >
+            {['global', 'today', 'team'].map((tab) => {
+              const active = activeTab === tab
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`h-7 px-3 font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-invert-bg text-invert-fg border border-invert-bg'
+                      : 'border border-line-strong text-fg-muted hover:text-fg hover:bg-surface-3'
+                  }`}
+                >
+                  {tab}
+                </button>
+              )
+            })}
           </div>
         </section>
 
-        <section className="mt-9">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-fg-muted">
-            ## {ended ? 'All players' : 'Standings'}
+        {/* PODIUM SECTION */}
+        <section className="mt-8">
+          <h2 className="font-mono text-xs md:text-sm font-bold uppercase tracking-widest text-fg-muted">
+            ## PODIUM
           </h2>
-          <LeaderboardTable players={ended ? rows : rows.slice(3)} />
+          <div className="mt-4">
+            <Podium players={top3} totalChallenges={totalChallenges} />
+          </div>
+        </section>
+
+        {/* STANDINGS TABLE SECTION */}
+        <section className="tv-standings mt-10">
+          <LeaderboardTable
+            players={restRows}
+            currentUserId={profile?.id}
+            totalChallenges={totalChallenges}
+            pageSize={10}
+          />
         </section>
       </div>
     </main>

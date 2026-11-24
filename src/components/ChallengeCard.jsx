@@ -1,37 +1,60 @@
 import { Link } from 'react-router-dom'
 import DifficultyBlocks from './DifficultyBlocks'
-import StatusGlyph from './StatusGlyph'
 
-export default function ChallengeCard({ challenge, solved }) {
+export default function ChallengeCard({ challenge, solved, attempted = false, locked = false }) {
   const number = String(challenge.sort_order ?? '').padStart(3, '0')
-  const type = challenge.type === 'web' ? 'WEB' : 'PY'
+  const tag = challenge.type === 'web' ? 'WEB' : (challenge.tier ? challenge.tier.toUpperCase() : 'ALGO')
+
+  let statusGlyph = '[ ]'
+  if (solved) statusGlyph = '[✓]'
+  else if (attempted) statusGlyph = '[~]'
+  else if (locked) statusGlyph = '[×]'
 
   return (
     <Link
       to={`/challenge/${challenge.id}`}
-      className="block border border-line-strong bg-surface-1 text-fg transition-transform duration-100 ease-[steps(2)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+      className={`challenge-card-item group block border border-line-strong bg-surface-1 text-fg transition-transform duration-100 ease-[steps(2)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
+        locked ? 'bg-hatch opacity-75 pointer-events-none' : ''
+      }`}
     >
-      {solved ? (
-        <div className="flex h-7 items-center justify-between bg-invert-bg px-4 text-[11px] font-bold uppercase tracking-widest text-invert-fg">
-          <span className="tabular-nums">{number}</span>
-          <StatusGlyph status="solved" inverted label="solved" />
-        </div>
-      ) : null}
+      {/* Top Header Strip */}
+      <div
+        className={`flex h-9 items-center justify-between px-4 text-xs font-mono border-b ${
+          solved
+            ? 'bg-invert-bg text-invert-fg border-invert-bg font-bold'
+            : 'border-line-strong bg-surface-1 text-fg'
+        }`}
+      >
+        <span className="tabular-nums font-bold tracking-wider">{number}</span>
 
-      <div className="p-4">
-        <div className="flex items-center justify-between gap-3 border-b border-dashed border-line pb-3">
-          {!solved ? <span className="text-xs tabular-nums text-fg-muted">{number}</span> : <span />}
-          <span className="inline-flex h-6 items-center border border-line-strong px-2 text-[11px] uppercase tracking-widest text-fg-muted">
-            [{type}]
+        {solved ? (
+          <span className="text-[11px] font-bold uppercase tracking-wider">[{tag}]</span>
+        ) : (
+          <span className="inline-flex h-5 items-center border border-line px-1.5 text-[10px] uppercase tracking-wider text-fg-muted">
+            [{tag}]
           </span>
-          {!solved ? <StatusGlyph status="unsolved" /> : <span className="w-[76px]" />}
-        </div>
+        )}
 
-        <h3 className="mt-4 text-base font-bold leading-6">{challenge.title}</h3>
+        <span
+          className={`font-bold tabular-nums ${
+            solved ? 'text-invert-fg' : attempted ? 'text-fg font-bold' : 'text-fg-muted'
+          }`}
+        >
+          {statusGlyph}
+        </span>
+      </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+      {/* Card Body */}
+      <div className="flex flex-col justify-between p-5 min-h-[140px]">
+        <h3 className="text-base font-bold font-mono leading-snug tracking-tight text-fg group-hover:underline">
+          {challenge.title}
+        </h3>
+
+        <div className="mt-6 flex items-center justify-between gap-3">
           <DifficultyBlocks tier={challenge.tier} />
-          <span className="text-xs font-bold tabular-nums text-fg-muted">+{challenge.points} pts</span>
+          <span className="text-xs font-mono font-bold tabular-nums text-fg-muted">
+            {challenge.points} pts
+          </span>
         </div>
       </div>
     </Link>

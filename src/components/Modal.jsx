@@ -1,5 +1,6 @@
 import { useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
+import { animate } from 'animejs'
 import { X } from 'lucide-react'
 
 const SIZE_CLASSES = {
@@ -92,6 +93,15 @@ export default function Modal({
     }
 
     window.addEventListener('keydown', handleKeyDown)
+
+    if (dialogRef.current) {
+      animate(dialogRef.current, {
+        scale: [0.96, 1],
+        opacity: [0, 1],
+        duration: 140,
+        ease: 'steps(2)',
+      })
+    }
 
     return () => {
       clearTimeout(timer)

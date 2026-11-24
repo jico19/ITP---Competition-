@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getReadableError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 
-const empty = { challenges: [], solvedIds: new Set(), error: '' }
+const empty = { challenges: [], solvedIds: new Set(), attemptedIds: new Set(), error: '' }
 
 export function useChallenges(userId) {
   const [data, setData] = useState({ key: null, ...empty })
@@ -14,7 +14,7 @@ export function useChallenges(userId) {
 
     async function load() {
       try {
-        const [challengeResult, scoreResult] = await Promise.all([
+        const [challengeResult, scoreResult, submissionResult] = await Promise.all([
           supabase
             .from('challenges')
             // Never select `tests`: hidden tests must stay on the server.
@@ -24,6 +24,10 @@ export function useChallenges(userId) {
           supabase
             .from('scores')
             .select('challenge_id, points')
+            .eq('user_id', userId),
+          supabase
+            .from('submissions')
+            .select('challenge_id')
             .eq('user_id', userId),
         ])
         if (!active) return
@@ -37,7 +41,19 @@ export function useChallenges(userId) {
             .filter((s) => s.points >= (maxPoints.get(s.challenge_id) ?? Infinity))
             .map((s) => s.challenge_id),
         )
-        setData({ key: userId, challenges, solvedIds, error: '' })
+
+        const attemptedIds = new Set(
+          (submissionResult.data ?? [])
+            .map((s) => s.challenge_id)
+            .filter((id) => !solvedIds.has(id)),
+        )
+        ;(scoreResult.data ?? []).forEach((s) => {
+          if (!solvedIds.has(s.challenge_id) && s.points > 0) {
+            attemptedIds.add(s.challenge_id)
+          }
+        })
+
+        setData({ key: userId, challenges, solvedIds, attemptedIds, error: '' })
       } catch (err) {
         if (!active) return
         setData({

@@ -3,7 +3,7 @@ import { getReadableError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 import { useSessionStore } from '../stores/sessionStore'
 
-async function fetchJoinedState(userId) {
+async function fetchJoinedState(userId, loadRoom) {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -12,6 +12,7 @@ async function fetchJoinedState(userId) {
 
   if (profileError) throw profileError
   if (!profile) return { profile: null, room: null }
+  if (!loadRoom) return { profile, room: null }
 
   const { data: room, error: roomError } = await supabase
     .from('rooms')
@@ -23,7 +24,7 @@ async function fetchJoinedState(userId) {
   return { profile, room }
 }
 
-export function useSession() {
+export function useSession({ loadRoom = true } = {}) {
   const session = useSessionStore((s) => s.session)
   const profile = useSessionStore((s) => s.profile)
   const room = useSessionStore((s) => s.room)
@@ -60,7 +61,7 @@ export function useSession() {
       }
 
       try {
-        const joined = await fetchJoinedState(nextSession.user.id)
+        const joined = await fetchJoinedState(nextSession.user.id, loadRoom)
         if (!active) return
         setProfile(joined.profile)
         setRoom(joined.room)
@@ -89,7 +90,7 @@ export function useSession() {
       active = false
       authListener.subscription.unsubscribe()
     }
-  }, [setError, setHydrated, setProfile, setRoom, setSession])
+  }, [setError, setHydrated, setProfile, setRoom, setSession, loadRoom])
 
   return { session, profile, room, hydrated, error }
 }

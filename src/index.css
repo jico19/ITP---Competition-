@@ -116,6 +116,15 @@
   );
 }
 
+/* Theme transition — applied temporarily during toggle */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 200ms ease, color 200ms ease,
+              border-color 200ms ease, box-shadow 200ms ease !important;
+}
+
 @layer base {
   :where(a, button, input, select, textarea, summary, [role="button"]):not(:disabled) {
     cursor: pointer;
@@ -147,6 +156,62 @@
   50% {
     opacity: 0;
   }
+}
+
+/* CodeMirror Tooltips & Autocomplete Suggestions */
+.cm-tooltip {
+  background-color: var(--surface-1) !important;
+  color: var(--fg) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 0px !important;
+  font-family: var(--font-mono) !important;
+  box-shadow: var(--shadow-hard-sm) !important;
+}
+
+.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  background-color: var(--surface-1) !important;
+}
+
+.cm-tooltip-autocomplete > ul > li {
+  color: var(--fg) !important;
+  padding: 3px 8px !important;
+  line-height: 20px !important;
+}
+
+.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background-color: var(--invert-bg) !important;
+  color: var(--invert-fg) !important;
+}
+
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText,
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail,
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon {
+  color: var(--invert-fg) !important;
+}
+
+.cm-completionMatchedText {
+  color: var(--fg) !important;
+  font-weight: bold !important;
+  text-decoration: underline !important;
+}
+
+.cm-completionDetail {
+  color: var(--fg-muted) !important;
+  font-style: italic !important;
+}
+
+.cm-completionIcon {
+  color: var(--fg-muted) !important;
+}
+
+.cm-tooltip.cm-completionInfo {
+  background-color: var(--surface-1) !important;
+  color: var(--fg) !important;
+  border: 1px solid var(--line-strong) !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
 }
 
 .live-pulse {

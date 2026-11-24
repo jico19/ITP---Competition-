@@ -5,6 +5,7 @@ import AdminNav from '../../components/AdminNav'
 import RoomPlayers from '../../components/RoomPlayers'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
+import { useScrambleAnimation } from '../../hooks/useScrambleAnimation'
 import { getReadableError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 import { useSessionStore } from '../../stores/sessionStore'
@@ -58,6 +59,14 @@ export default function Rooms() {
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState({ name: '', code: '', status: 'lobby', endsAt: '' })
   const [deleteId, setDeleteId] = useState('')
+
+  const { scrambleTo } = useScrambleAnimation({ defaultRevealRate: 20, chars: 'A-Z0-9' })
+
+  function handleGenerate() {
+    setCreateError('')
+    const nextCode = generateCode()
+    scrambleTo(code, nextCode, setCode)
+  }
   const [deleteCode, setDeleteCode] = useState('')
   const [playersOpenId, setPlayersOpenId] = useState('')
 
@@ -330,10 +339,7 @@ export default function Rooms() {
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    setCreateError('')
-                    setCode(generateCode())
-                  }}
+                  onClick={handleGenerate}
                   className={secondaryButton}
                 >
                   generate

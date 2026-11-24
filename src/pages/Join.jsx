@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Modal from '../components/Modal'
 import StatusGlyph from '../components/StatusGlyph'
+import { useScrambleAnimation } from '../hooks/useScrambleAnimation'
 import { useSession } from '../hooks/useSession'
 import { getReadableError } from '../lib/errors'
 import { suggestDisplayName } from '../lib/names'
@@ -19,16 +21,25 @@ function validate(displayName, roomCode) {
   return null
 }
 
-function JoinForm({ initialName, initialCode, isRejoin }) {
+function JoinForm({ initialName, isRejoin }) {
   const navigate = useNavigate()
   const setSession = useSessionStore((s) => s.setSession)
   const setProfile = useSessionStore((s) => s.setProfile)
   const setRoom = useSessionStore((s) => s.setRoom)
 
+  const roomCodeRef = useRef(null)
   const [displayName, setDisplayName] = useState(initialName)
-  const [roomCode, setRoomCode] = useState(initialCode)
+  const [roomCode, setRoomCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [roomUnavailableOpen, setRoomUnavailableOpen] = useState(false)
+
+  const { scrambleTo } = useScrambleAnimation({ defaultRevealRate: 20 })
+
+  function handleSuggest() {
+    const nextName = suggestDisplayName()
+    scrambleTo(displayName, nextName, setDisplayName)
+  }
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -72,10 +83,23 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
       setRoom(joinedRoom)
       navigate('/challenges')
     } catch (err) {
-      setError(getReadableError(err, 'Could not join room.'))
+      const message = getReadableError(err, 'Could not join room.')
+      if (/invalid room code|room has ended/i.test(message)) {
+        setError('')
+        setRoomUnavailableOpen(true)
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleRoomUnavailableClose() {
+    setRoomUnavailableOpen(false)
+    setRoomCode('')
+    // Modal restores focus to the submit button on unmount; focus after that.
+    requestAnimationFrame(() => roomCodeRef.current?.focus())
   }
 
   return (
@@ -116,7 +140,7 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setDisplayName(suggestDisplayName())}
+                  onClick={handleSuggest}
                   className="h-10 shrink-0 border border-line-strong bg-transparent px-4 text-xs font-bold uppercase tracking-wider text-fg hover:bg-surface-3 active:shadow-none"
                 >
                   suggest
@@ -133,6 +157,7 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
                 <span className="pl-3 text-fg-faint" aria-hidden="true">$</span>
                 <input
                   id="room-code"
+                  ref={roomCodeRef}
                   className="h-full w-full bg-transparent px-2 text-sm uppercase text-fg outline-none placeholder:text-fg-faint"
                   type="text"
                   value={roomCode}
@@ -159,12 +184,34 @@ function JoinForm({ initialName, initialCode, isRejoin }) {
           </form>
         </div>
       </div>
+
+      <Modal
+        isOpen={roomUnavailableOpen}
+        onClose={handleRoomUnavailableClose}
+        title="# Room Unavailable"
+        role="alertdialog"
+        size="sm"
+        footer={
+          <button
+            type="button"
+            onClick={handleRoomUnavailableClose}
+            className="inline-flex h-10 items-center justify-center border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
+          >
+            ok
+          </button>
+        }
+      >
+        <StatusGlyph status="error" label="room unavailable" />
+        <p className="mt-4 text-sm leading-6 text-fg-muted">
+          That room code has expired or the match no longer exists. Ask the organizer for the current code, then try again.
+        </p>
+      </Modal>
     </main>
   )
 }
 
 export default function Join() {
-  const { profile, room, hydrated } = useSession()
+  const { profile, hydrated } = useSession({ loadRoom: false })
 
   if (!hydrated) {
     return (
@@ -178,7 +225,6 @@ export default function Join() {
     <JoinForm
       key={profile?.id ?? 'new'}
       initialName={profile?.display_name ?? ''}
-      initialCode={room?.code ?? ''}
       isRejoin={Boolean(profile)}
     />
   )
