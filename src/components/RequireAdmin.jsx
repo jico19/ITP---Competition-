@@ -8,7 +8,7 @@ export default function RequireAdmin() {
 
   if (status === 'loading') {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+      <main className="flex min-h-svh items-center justify-center px-4 text-fg">
         <StatusGlyph status="loading" label="Checking admin access..." />
       </main>
     )
@@ -16,7 +16,7 @@ export default function RequireAdmin() {
 
   if (error) {
     return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-bg px-4 text-center text-fg">
+      <main className="flex min-h-svh flex-col items-center justify-center gap-6 px-4 text-center text-fg">
         <div className="max-w-md border border-dashed border-line-strong p-6" role="alert">
           <StatusGlyph status="error" label="Admin access error" />
           <p className="mt-3 text-sm text-fg-muted">{error}</p>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { animate } from 'animejs'
+import { animate, steps } from 'animejs'
 import { X } from 'lucide-react'
+import { prefersReducedMotion } from '../lib/motion'
 
 const SIZE_CLASSES = {
   sm: 'max-w-md',
@@ -35,6 +36,14 @@ export default function Modal({
   const dialogRef = useRef(null)
   const previousFocusRef = useRef(null)
 
+  const onCloseRef = useRef(onClose)
+  const closeOnEscRef = useRef(closeOnEsc)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+    closeOnEscRef.current = closeOnEsc
+  })
+
   // Handle focus lock, escape key, and body scroll lock
   useEffect(() => {
     if (!isOpen) return
@@ -58,10 +67,10 @@ export default function Modal({
     }, 0)
 
     function handleKeyDown(event) {
-      if (event.key === 'Escape' && closeOnEsc) {
+      if (event.key === 'Escape' && closeOnEscRef.current) {
         event.preventDefault()
         event.stopPropagation()
-        onClose?.()
+        onCloseRef.current?.()
         return
       }
 
@@ -94,12 +103,12 @@ export default function Modal({
 
     window.addEventListener('keydown', handleKeyDown)
 
-    if (dialogRef.current) {
+    if (dialogRef.current && !prefersReducedMotion()) {
       animate(dialogRef.current, {
         scale: [0.96, 1],
         opacity: [0, 1],
         duration: 140,
-        ease: 'steps(2)',
+        ease: steps(2),
       })
     }
 
@@ -111,7 +120,7 @@ export default function Modal({
         previousFocusRef.current.focus()
       }
     }
-  }, [isOpen, closeOnEsc, onClose, initialFocusRef])
+  }, [isOpen, initialFocusRef])
 
   if (!isOpen) return null
 

@@ -19,7 +19,7 @@ export default function ChallengeCard({ challenge, solved, attempted = false, lo
     >
       {/* Top Header Strip */}
       <div
-        className={`flex h-9 items-center justify-between px-4 text-xs font-mono border-b ${
+        className={`flex h-10 items-center justify-between px-4 text-xs font-mono border-b ${
           solved
             ? 'bg-invert-bg text-invert-fg border-invert-bg font-bold'
             : 'border-line-strong bg-surface-1 text-fg'
@@ -28,9 +28,11 @@ export default function ChallengeCard({ challenge, solved, attempted = false, lo
         <span className="tabular-nums font-bold tracking-wider">{number}</span>
 
         {solved ? (
-          <span className="text-[11px] font-bold uppercase tracking-wider">[{tag}]</span>
+          <span className="inline-flex h-6 items-center border border-invert-fg px-2 text-[11px] font-bold uppercase tracking-wider">
+            [{tag}]
+          </span>
         ) : (
-          <span className="inline-flex h-5 items-center border border-line px-1.5 text-[10px] uppercase tracking-wider text-fg-muted">
+          <span className="inline-flex h-6 items-center border border-line-strong px-2 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
             [{tag}]
           </span>
         )}

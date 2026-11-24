@@ -408,7 +408,7 @@ export default function ChallengeForm() {
 
   if (loading) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+      <main className="flex min-h-svh items-center justify-center px-4 text-fg">
         <StatusGlyph status="loading" label="Loading challenge..." />
       </main>
     )
@@ -436,7 +436,7 @@ export default function ChallengeForm() {
   )
 
   return (
-    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+    <main className="min-h-svh px-4 py-8 text-fg md:px-6">
       <div className="mx-auto w-full max-w-4xl">
         <header>
           <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>

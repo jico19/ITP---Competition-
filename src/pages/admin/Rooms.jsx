@@ -291,7 +291,7 @@ export default function Rooms() {
   }
 
   return (
-    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+    <main className="min-h-svh px-4 py-8 text-fg md:px-6">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>

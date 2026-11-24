@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { animate, stagger } from 'animejs'
+import { animate, steps, stagger } from 'animejs'
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
 import { flashHighlight, prefersReducedMotion } from '../lib/motion'
 import StatusGlyph from './StatusGlyph'
@@ -118,7 +118,7 @@ export default function LeaderboardTable({
         translateX: [-12, 0],
         opacity: [0, 1],
         duration: 180,
-        ease: 'steps(3)',
+        ease: steps(3),
         delay: stagger(40),
       })
     }
@@ -126,7 +126,7 @@ export default function LeaderboardTable({
 
   if (players.length === 0) {
     return (
-      <div className="border border-dashed border-line-strong p-8 text-center bg-surface-1">
+      <div className="border border-dashed border-line-strong p-8 text-center">
         <StatusGlyph status="unsolved" label="No other players in the standings yet." />
       </div>
     )

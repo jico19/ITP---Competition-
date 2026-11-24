@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useState } from 'react'
-import { animate, scrambleText, stagger } from 'animejs'
+import { animate, scrambleText, steps, stagger } from 'animejs'
 import { prefersReducedMotion } from '../lib/motion'
 
 export default function Terminal({
@@ -89,7 +89,7 @@ export default function Terminal({
         translateX: [-16, 0],
         delay: stagger(90),
         duration: 220,
-        ease: 'steps(3)',
+        ease: steps(3),
       })
     }
   }, [results])

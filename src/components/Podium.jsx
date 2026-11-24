@@ -69,7 +69,7 @@ function PodiumCard({ rank, player, totalChallenges, isCenter }) {
 export default function Podium({ players = [], totalChallenges = 10 }) {
   if (players.length === 0) {
     return (
-      <div className="border border-dashed border-line-strong p-8 text-center bg-surface-1">
+      <div className="border border-dashed border-line-strong p-8 text-center">
         <StatusGlyph status="unsolved" label="No scores on the podium yet." />
       </div>
     )

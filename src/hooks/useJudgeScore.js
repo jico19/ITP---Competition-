@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase'
 
 const initial = { key: '', scores: {}, saved: false, saving: false, error: '' }
 
-export function useJudgeScore(userId, challengeId) {
-  const key = userId && challengeId ? `${userId}:${challengeId}` : ''
+export function useJudgeScore(userId, challengeId, roomId) {
+  const key = roomId && userId && challengeId ? `${roomId}:${userId}:${challengeId}` : ''
   const [data, setData] = useState(initial)
 
   useEffect(() => {
@@ -19,6 +19,7 @@ export function useJudgeScore(userId, challengeId) {
           .from('judge_scores')
           .select('rubric_scores,points')
           .eq('user_id', userId)
+          .eq('room_id', roomId)
           .eq('challenge_id', challengeId)
           .maybeSingle()
         if (!active) return
@@ -47,7 +48,7 @@ export function useJudgeScore(userId, challengeId) {
     return () => {
       active = false
     }
-  }, [key, userId, challengeId])
+  }, [key, userId, roomId, challengeId])
 
   async function save(scores, points, maxPoints) {
     if (!key) return false
@@ -70,11 +71,12 @@ export function useJudgeScore(userId, challengeId) {
       const { error } = await supabase.from('judge_scores').upsert(
         {
           user_id: userId,
+          room_id: roomId,
           challenge_id: challengeId,
           rubric_scores: scores,
           points,
         },
-        { onConflict: 'user_id,challenge_id' },
+        { onConflict: 'room_id,user_id,challenge_id' },
       )
       if (error) throw error
 

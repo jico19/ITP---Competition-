@@ -1,4 +1,4 @@
-import { animate } from 'animejs'
+import { animate, steps } from 'animejs'
 
 export function prefersReducedMotion() {
   // Forced to false so animations always play even if OS animation settings are disabled
@@ -32,6 +32,6 @@ export function flashHighlight(element, { duration = 240 } = {}) {
   return animate(element, {
     opacity: [0.3, 1],
     duration,
-    ease: 'steps(3)',
+    ease: steps(3),
   })
 }

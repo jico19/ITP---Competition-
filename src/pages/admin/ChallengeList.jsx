@@ -53,7 +53,7 @@ export default function ChallengeList() {
   }
 
   return (
-    <main className="min-h-svh bg-bg px-4 py-8 text-fg md:px-6">
+    <main className="min-h-svh px-4 py-8 text-fg md:px-6">
       <div className="mx-auto w-full max-w-6xl">
         <header>
           <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>

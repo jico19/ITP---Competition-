@@ -95,7 +95,7 @@ export default function Challenge() {
     judgeScore = null,
     loading,
     error,
-  } = useChallengeDetail(id, profile?.id)
+  } = useChallengeDetail(id, profile?.id, roomQuery.room?.id)
   const remaining = useCountdown(roomQuery.room?.ends_at)
   const engine = usePyEngine()
 
@@ -258,7 +258,7 @@ export default function Challenge() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg text-fg font-mono">
+    <div className="flex flex-col min-h-screen text-fg font-mono">
       {/* Top Header Bar matching ui-pics/3 · Puzzle Solving View */}
       <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-line-strong bg-bg px-4 md:px-6">
         <div className="flex items-center gap-6 min-w-0">

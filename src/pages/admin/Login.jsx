@@ -44,7 +44,7 @@ export default function Login() {
 
   if (status === 'loading') {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-bg px-4 text-fg">
+      <main className="flex min-h-svh items-center justify-center px-4 text-fg">
         <StatusGlyph status="loading" label="Checking admin access..." />
       </main>
     )

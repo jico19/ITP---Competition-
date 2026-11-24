@@ -75,15 +75,16 @@ create index submissions_user_challenge_idx on public.submissions(user_id, chall
 create table public.judge_scores (
   id             uuid primary key default gen_random_uuid(),
   user_id        uuid not null references public.profiles(id) on delete cascade,
+  room_id        uuid not null references public.rooms(id) on delete cascade,
   challenge_id   uuid not null references public.challenges(id) on delete cascade,
   rubric_scores  jsonb not null default '{}'::jsonb,   -- {"Add a task":10,"Toggle done":5}
   points         int  not null check (points >= 0),
   judged_by      uuid default auth.uid(),
   updated_at     timestamptz not null default now(),
-  unique (user_id, challenge_id)
+  unique (room_id, user_id, challenge_id)
 );
 
--- ---------- Scores (best points per player per challenge; feeds leaderboard) ----------
+-- ---------- Scores (best points per player per room per challenge; feeds leaderboard) ----------
 -- Written only by triggers. Public read so the TV page can use Realtime.
 create table public.scores (
   user_id      uuid not null references public.profiles(id) on delete cascade,
@@ -91,7 +92,7 @@ create table public.scores (
   challenge_id uuid not null references public.challenges(id) on delete cascade,
   points       int  not null default 0,
   updated_at   timestamptz not null default now(),
-  primary key (user_id, challenge_id)
+  primary key (user_id, room_id, challenge_id)
 );
 create index scores_room_idx on public.scores(room_id);
 
@@ -237,7 +238,7 @@ declare
 begin
   insert into public.scores (user_id, room_id, challenge_id, points)
   values (new.user_id, new.room_id, new.challenge_id, new.points)
-  on conflict (user_id, challenge_id) do update
+  on conflict (user_id, room_id, challenge_id) do update
     set points = excluded.points, updated_at = now()
     where excluded.points > scores.points;
 
@@ -259,12 +260,21 @@ create or replace function public.before_judge_score()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 declare c public.challenges;
+  p public.profiles;
 begin
   select * into c from public.challenges where id = new.challenge_id;
   if not found then raise exception 'Challenge not found'; end if;
   if new.points > c.points then
     raise exception 'Points exceed the challenge maximum (%)', c.points;
   end if;
+
+  select * into p from public.profiles where id = new.user_id;
+  if not found then raise exception 'Player not found'; end if;
+  if p.room_id is distinct from new.room_id then
+    raise exception 'Judge score must match the player room';
+  end if;
+
+  new.room_id := p.room_id;
   new.updated_at := now();
   return new;
 end $$;
@@ -281,7 +291,7 @@ begin
   insert into public.scores (user_id, room_id, challenge_id, points)
   select new.user_id, p.room_id, new.challenge_id, new.points
   from public.profiles p where p.id = new.user_id
-  on conflict (user_id, challenge_id) do update
+  on conflict (user_id, room_id, challenge_id) do update
     set points = excluded.points, updated_at = now();
 
   select points into v_max from public.challenges where id = new.challenge_id;
@@ -311,11 +321,11 @@ with bonus as (
   from public.first_solves
   group by user_id, room_id
 ), solved as (
-  select s.user_id, count(*)::int as solved
+  select s.user_id, s.room_id, count(*)::int as solved
   from public.scores s
   join public.challenges c on c.id = s.challenge_id
   where s.points >= c.points
-  group by s.user_id
+  group by s.user_id, s.room_id
 )
 select
   p.id                                         as user_id,
@@ -330,9 +340,9 @@ select
              greatest(max(s.updated_at), b.awarded_at) asc nulls last
   )::int                                       as rank
 from public.profiles p
-left join public.scores s on s.user_id = p.id
+left join public.scores s on s.user_id = p.id and s.room_id = p.room_id
 left join bonus b on b.user_id = p.id and b.room_id = p.room_id
-left join solved v on v.user_id = p.id
+left join solved v on v.user_id = p.id and v.room_id = p.room_id
 where p.last_seen_at > now() - interval '90 seconds'
 group by p.id, p.display_name, p.room_id, b.points, b.awarded_at, v.solved;
 

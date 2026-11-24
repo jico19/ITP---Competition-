@@ -1,15 +1,10 @@
-import { useEffect, useRef } from 'react'
-import { animate, scrambleText } from 'animejs'
 import { RotateCcw } from 'lucide-react'
 import { useCountdown } from '../hooks/useCountdown'
 import { formatDuration } from '../lib/formatDuration'
-import { prefersReducedMotion } from '../lib/motion'
 import StatusGlyph from './StatusGlyph'
 
 export default function RoundBanner({ room, loading, error, onRetry }) {
   const remaining = useCountdown(room?.ends_at)
-  const msgRef = useRef(null)
-  const prevMsgRef = useRef('')
 
   let status = 'loading'
   let title = 'Checking round status'
@@ -43,21 +38,6 @@ export default function RoundBanner({ room, loading, error, onRetry }) {
     message = 'Submissions are closed.'
   }
 
-  // Scramble message text on status change
-  useEffect(() => {
-    if (!msgRef.current || prefersReducedMotion()) return
-    if (message === prevMsgRef.current) return
-    prevMsgRef.current = message
-
-    animate(msgRef.current, {
-      textContent: scrambleText({
-        text: message,
-        revealRate: 30,
-        chars: 'a-z0-9. ',
-      }),
-    })
-  }, [message])
-
   return (
     <div
       className={`mt-6 border bg-surface-1 p-4 ${
@@ -68,7 +48,7 @@ export default function RoundBanner({ room, loading, error, onRetry }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <StatusGlyph status={status} label={title} />
-          <p ref={msgRef} className="mt-2 text-sm text-fg-muted">{message}</p>
+          <p className="mt-2 text-sm text-fg-muted">{message}</p>
         </div>
         {status === 'error' && onRetry ? (
           <button

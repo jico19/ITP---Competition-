@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { animate, scrambleText, stagger } from 'animejs'
+import { animate, scrambleText, steps, stagger } from 'animejs'
 import ChallengeCard from '../components/ChallengeCard'
 import ConfirmModal from '../components/ConfirmModal'
-import Countdown from '../components/Countdown'
-import RoundBanner from '../components/RoundBanner'
 import StatusGlyph from '../components/StatusGlyph'
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
 import { useChallenges } from '../hooks/useChallenges'
+import { useCountdown } from '../hooks/useCountdown'
 import { useRoom } from '../hooks/useRoom'
 import { useSession } from '../hooks/useSession'
+import { formatDuration } from '../lib/formatDuration'
 import { prefersReducedMotion } from '../lib/motion'
 import { supabase } from '../lib/supabase'
 import { useSessionStore } from '../stores/sessionStore'
@@ -46,7 +46,11 @@ export default function Challenges() {
   const clearSession = useSessionStore((s) => s.clearSession)
   const navigate = useNavigate()
   const roomQuery = useRoom(profile?.room_id)
-  const { challenges, solvedIds, attemptedIds = new Set(), loading, error } = useChallenges(profile?.id)
+  const { challenges, solvedIds, attemptedIds = new Set(), loading, error } = useChallenges(
+    profile?.id,
+    roomQuery.room?.id,
+  )
+  const remaining = useCountdown(roomQuery.room?.ends_at)
 
   const [activeFilter, setActiveFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -88,7 +92,7 @@ export default function Challenges() {
         translateY: [-10, 0],
         opacity: [0, 1],
         duration: 180,
-        ease: 'steps(3)',
+        ease: steps(3),
       })
     }
 
@@ -98,7 +102,7 @@ export default function Challenges() {
         translateY: [-12, 0],
         opacity: [0, 1],
         duration: 200,
-        ease: 'steps(3)',
+        ease: steps(3),
         delay: 60,
       })
     }
@@ -119,7 +123,7 @@ export default function Challenges() {
         translateX: [-12, 0],
         opacity: [0, 1],
         duration: 180,
-        ease: 'steps(3)',
+        ease: steps(3),
         delay: 140,
       })
     }
@@ -170,14 +174,14 @@ export default function Challenges() {
         translateY: [12, 0],
         delay: stagger(40),
         duration: 180,
-        ease: 'steps(3)',
+        ease: steps(3),
       })
     }
   }, [filteredChallenges, activeFilter])
 
   if (!hydrated) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+      <main className="w-full px-6 md:px-10 lg:px-12 xl:px-16 py-8 md:py-10">
         <StatusGlyph status="loading" label="Loading session..." />
       </main>
     )
@@ -190,44 +194,64 @@ export default function Challenges() {
   const progressCells = '■'.repeat(filledBlocks) + '□'.repeat(10 - filledBlocks)
 
   return (
-    <main ref={containerRef} className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      {/* Room Status & Timer */}
-      <div className="ch-banner">
-        <RoundBanner
-        room={roomQuery.room}
-        loading={roomQuery.loading}
-        error={roomQuery.error}
-        onRetry={roomQuery.reload}
-      />
-      <Countdown room={roomQuery.room} loading={roomQuery.loading} error={roomQuery.error} />
-      </div>
+    <main ref={containerRef} className="w-full px-6 md:px-10 lg:px-12 xl:px-16 py-8 md:py-10">
+      {/* Optional Room Loading Error Alert */}
+      {roomQuery.error ? (
+        <div className="mb-6 border border-dashed border-line-strong p-4" role="alert">
+          <StatusGlyph status="error" label={roomQuery.error} />
+        </div>
+      ) : null}
 
       {/* Header section matching ui-pics/2 · Challenge Board */}
-      <section className="ch-header mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <section className="ch-header flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1
             ref={titleRef}
-            className="text-2xl md:text-3xl font-bold font-mono tracking-tight text-fg"
+            className="text-3xl md:text-4xl font-bold font-mono tracking-tight text-fg"
           >
             # Challenge Board
           </h1>
-          <p className="mt-1 font-mono text-xs text-fg-muted">~/board</p>
-          <button
-            type="button"
-            onClick={() => setLeaveModalOpen(true)}
-            disabled={leaving}
-            className="mt-3 inline-flex h-8 items-center border border-line-strong px-3 font-mono text-xs font-bold uppercase tracking-wider text-fg-muted hover:bg-surface-3 hover:text-fg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            $ back to join
-          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-xs text-fg-muted">
+            <span>~/board</span>
+            {roomQuery.room?.status === 'live' && remaining !== null && remaining > 0 ? (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-1.5 text-fg font-bold">
+                  <span className="inline-block h-2 w-2 rounded-full bg-fg live-pulse" />
+                  <span>LIVE</span>
+                  <span className="text-fg-muted">·</span>
+                  <span className="tabular-nums">{formatDuration(remaining)} left</span>
+                </span>
+              </>
+            ) : roomQuery.room?.status === 'ended' || (remaining !== null && remaining <= 0) ? (
+              <>
+                <span>·</span>
+                <span className="text-fg font-bold">[✓] ROUND ENDED</span>
+              </>
+            ) : roomQuery.room?.status === 'lobby' ? (
+              <>
+                <span>·</span>
+                <span>[ ] LOBBY · WAITING FOR GO</span>
+              </>
+            ) : null}
+            <span>·</span>
+            <button
+              type="button"
+              onClick={() => setLeaveModalOpen(true)}
+              disabled={leaving}
+              className="text-fg-muted hover:text-fg hover:underline cursor-pointer"
+            >
+              $ leave room
+            </button>
+          </div>
         </div>
 
-        <div className="text-left sm:text-right">
+        <div className="text-left md:text-right">
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-fg-muted block mb-1">
             PROGRESS
           </span>
           <div
-            className="font-mono text-base md:text-lg font-bold tabular-nums text-fg flex items-center sm:justify-end gap-2.5"
+            className="font-mono text-lg md:text-xl font-bold tabular-nums text-fg flex items-center md:justify-end gap-3"
             aria-label={`${solvedCount} of ${totalCount} solved`}
           >
             <span className="tracking-widest" aria-hidden="true">[{progressCells}]</span>
@@ -236,11 +260,11 @@ export default function Challenges() {
         </div>
       </section>
 
-      {/* Divider */}
+      {/* Horizontal Divider */}
       <hr className="my-6 border-dashed border-line" />
 
-      {/* Filter tabs and grep search toolbar */}
-      <section className="ch-filters flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filter tabs and grep search toolbar (Web-first single row layout) */}
+      <section className="ch-filters flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Challenge category filters">
           {filters.map((f) => {
@@ -250,11 +274,10 @@ export default function Challenges() {
                 key={f.key}
                 type="button"
                 onClick={() => setActiveFilter(f.key)}
-                className={`h-7 px-3 text-xs font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                  active
-                    ? 'bg-invert-bg text-invert-fg border border-invert-bg'
-                    : 'border border-line-strong text-fg-muted hover:text-fg hover:bg-surface-3'
-                }`}
+                className={`h-8 px-3.5 text-xs font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer ${active
+                  ? 'bg-invert-bg text-invert-fg border border-invert-bg'
+                  : 'border border-line-strong text-fg-muted hover:text-fg hover:bg-surface-3'
+                  }`}
               >
                 {f.label}
               </button>
@@ -263,7 +286,7 @@ export default function Challenges() {
         </div>
 
         {/* Terminal Grep Search */}
-        <div className="flex items-center border border-line-strong bg-surface-2 px-3 py-1 focus-within:border-fg">
+        <div className="flex h-8 items-center border border-line-strong bg-surface-2 px-3 focus-within:border-fg">
           <span className="font-mono text-xs text-fg-muted mr-2 select-none" aria-hidden="true">
             $
           </span>
@@ -272,7 +295,7 @@ export default function Challenges() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="grep puzzle_name"
-            className="w-44 md:w-56 bg-transparent font-mono text-xs text-fg outline-none placeholder:text-fg-faint"
+            className="w-48 md:w-60 bg-transparent font-mono text-xs text-fg outline-none placeholder:text-fg-faint"
           />
           {search ? (
             <button
@@ -289,26 +312,26 @@ export default function Challenges() {
 
       {/* Status or loading states */}
       {error ? (
-        <div className="mt-6 border border-dashed border-line-strong p-4" role="alert">
+        <div className="mt-8 border border-dashed border-line-strong p-6" role="alert">
           <StatusGlyph status="error" label={error} />
         </div>
       ) : null}
 
       {loading ? (
-        <div className="mt-8 bg-dots-dense p-9 text-center">
+        <div className="mt-8 bg-dots-dense p-12 text-center">
           <StatusGlyph status="loading" label="Loading challenges..." />
         </div>
       ) : null}
 
       {!loading && !error && challenges.length === 0 ? (
-        <div className="mt-8 bg-dots-dense p-9 text-center">
+        <div className="mt-8 bg-dots-dense p-12 text-center">
           <StatusGlyph status="unsolved" label="No challenges published yet." />
         </div>
       ) : null}
 
       {/* Search empty state */}
       {!loading && !error && challenges.length > 0 && filteredChallenges.length === 0 ? (
-        <div className="mt-8 border border-dashed border-line p-8 text-center">
+        <div className="mt-8 border border-dashed border-line p-10 text-center">
           <p className="font-mono text-sm text-fg-muted">
             $ grep: pattern &apos;{search}&apos; did not match any challenges in &apos;{activeFilter}&apos;.
           </p>
@@ -327,7 +350,7 @@ export default function Challenges() {
 
       {/* Challenge Cards Grid */}
       {!loading && !error && filteredChallenges.length > 0 ? (
-        <div ref={gridRef} className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div ref={gridRef} className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredChallenges.map((challenge) => (
             <ChallengeCard
               key={challenge.id}

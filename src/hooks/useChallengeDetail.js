@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase'
 
 const empty = { challenge: null, solved: false, submissions: [], judgeScore: null, error: '' }
 
-export function useChallengeDetail(challengeId, userId) {
-  const [data, setData] = useState({ key: null, ...empty })
+export function useChallengeDetail(challengeId, userId, roomId) {
+  const [data, setData] = useState({ key: null, roomId: null, ...empty })
 
   useEffect(() => {
-    if (!challengeId || !userId) return
+    if (!challengeId || !userId || !roomId) return
 
     let active = true
 
@@ -26,18 +26,21 @@ export function useChallengeDetail(challengeId, userId) {
             .from('scores')
             .select('points')
             .eq('user_id', userId)
+            .eq('room_id', roomId)
             .eq('challenge_id', challengeId)
             .maybeSingle(),
           supabase
             .from('submissions')
             .select('id, passed, total, points, created_at')
             .eq('user_id', userId)
+            .eq('room_id', roomId)
             .eq('challenge_id', challengeId)
             .order('created_at', { ascending: false }),
           supabase
             .from('judge_scores')
             .select('rubric_scores, points')
             .eq('user_id', userId)
+            .eq('room_id', roomId)
             .eq('challenge_id', challengeId)
             .maybeSingle(),
         ])
@@ -49,11 +52,12 @@ export function useChallengeDetail(challengeId, userId) {
         const solved = Boolean(challenge && scoreResult.data?.points >= challenge.points)
         const submissions = submissionsResult?.data ?? []
         const judgeScore = judgeScoreResult?.data ?? null
-        setData({ key: challengeId, challenge, solved, submissions, judgeScore, error: '' })
+        setData({ key: challengeId, roomId, challenge, solved, submissions, judgeScore, error: '' })
       } catch (err) {
         if (!active) return
         setData({
           key: challengeId,
+          roomId,
           ...empty,
           error: getReadableError(err, 'Could not load challenge.'),
         })
@@ -64,11 +68,13 @@ export function useChallengeDetail(challengeId, userId) {
     return () => {
       active = false
     }
-  }, [challengeId, userId])
+  }, [challengeId, userId, roomId])
 
   const current = data.key === challengeId ? data : empty
   return {
     ...current,
-    loading: Boolean(challengeId && userId) && data.key !== challengeId,
+    loading:
+      Boolean(challengeId && userId) &&
+      (data.key !== challengeId || data.roomId !== roomId),
   }
 }

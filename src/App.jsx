@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import RequireAdmin from './components/RequireAdmin'
+import StaggerBackground from './components/StaggerBackground'
 import TopBar from './components/TopBar'
 import { usePresence } from './hooks/usePresence'
 import { usePyEngine } from './hooks/usePyEngine'
@@ -81,23 +82,26 @@ export default function App() {
 
   return (
     <>
-      <TopBar />
-      <Routes>
-        <Route path="/" element={<Join />} />
-        <Route path="/challenges" element={<Challenges />} />
-        <Route path="/challenge/:id" element={<Challenge />} />
-        <Route path="/tv/:roomCode" element={<Tv />} />
-        <Route path="/leaderboard" element={<LeaderboardRoute />} />
-        <Route path="/admin/login" element={<Login />} />
-        <Route element={<RequireAdmin />}>
-          <Route path="/admin" element={<Rooms />} />
-          <Route path="/admin/challenges" element={<ChallengeList />} />
-          <Route path="/admin/challenges/new" element={<ChallengeForm />} />
-          <Route path="/admin/challenges/:id" element={<ChallengeForm />} />
-          <Route path="/admin/judge" element={<Judge />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <StaggerBackground />
+      <div className="relative z-10 flex min-h-svh flex-col">
+        <TopBar />
+        <Routes>
+          <Route path="/" element={<Join />} />
+          <Route path="/challenges" element={<Challenges />} />
+          <Route path="/challenge/:id" element={<Challenge />} />
+          <Route path="/tv/:roomCode" element={<Tv />} />
+          <Route path="/leaderboard" element={<LeaderboardRoute />} />
+          <Route path="/admin/login" element={<Login />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin" element={<Rooms />} />
+            <Route path="/admin/challenges" element={<ChallengeList />} />
+            <Route path="/admin/challenges/new" element={<ChallengeForm />} />
+            <Route path="/admin/challenges/:id" element={<ChallengeForm />} />
+            <Route path="/admin/judge" element={<Judge />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </>
   )
 }

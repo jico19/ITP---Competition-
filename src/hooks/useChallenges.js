@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase'
 
 const empty = { challenges: [], solvedIds: new Set(), attemptedIds: new Set(), error: '' }
 
-export function useChallenges(userId) {
-  const [data, setData] = useState({ key: null, ...empty })
+export function useChallenges(userId, roomId) {
+  const [data, setData] = useState({ key: null, roomId: null, ...empty })
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId || !roomId) return
 
     let active = true
 
@@ -24,11 +24,13 @@ export function useChallenges(userId) {
           supabase
             .from('scores')
             .select('challenge_id, points')
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .eq('room_id', roomId),
           supabase
             .from('submissions')
             .select('challenge_id')
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .eq('room_id', roomId),
         ])
         if (!active) return
         if (challengeResult.error) throw challengeResult.error
@@ -53,11 +55,12 @@ export function useChallenges(userId) {
           }
         })
 
-        setData({ key: userId, challenges, solvedIds, attemptedIds, error: '' })
+        setData({ key: userId, roomId, challenges, solvedIds, attemptedIds, error: '' })
       } catch (err) {
         if (!active) return
         setData({
           key: userId,
+          roomId,
           ...empty,
           error: getReadableError(err, 'Could not load challenges.'),
         })
@@ -68,8 +71,11 @@ export function useChallenges(userId) {
     return () => {
       active = false
     }
-  }, [userId])
+  }, [userId, roomId])
 
   const current = data.key === userId ? data : empty
-  return { ...current, loading: Boolean(userId) && data.key !== userId }
+  return {
+    ...current,
+    loading: Boolean(userId) && (data.key !== userId || data.roomId !== roomId),
+  }
 }

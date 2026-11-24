@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { animate, scrambleText, stagger } from 'animejs'
+import { animate, scrambleText, steps, stagger } from 'animejs'
 import LeaderboardTable from '../components/LeaderboardTable'
 import Podium from '../components/Podium'
 import StatusGlyph from '../components/StatusGlyph'
@@ -12,7 +12,7 @@ import { useSessionStore } from '../stores/sessionStore'
 
 function FullScreenMessage({ children }) {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-bg px-8 text-center text-2xl text-fg font-mono">
+    <main className="flex min-h-svh items-center justify-center px-8 text-center text-2xl text-fg font-mono">
       {children}
     </main>
   )
@@ -30,10 +30,6 @@ export default function Tv() {
   const containerRef = useRef(null)
   const hasAnimatedRef = useRef(false)
   const titleRef = useRef(null)
-  const timerRef = useRef(null)
-  const prevTimerRef = useRef('')
-  const updatedLabelRef = useRef(null)
-  const prevUpdatedRef = useRef('')
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,7 +47,7 @@ export default function Tv() {
   if (error) {
     return (
       <FullScreenMessage>
-        <div className="border border-dashed border-line-strong p-6 bg-surface-1">
+        <div className="border border-dashed border-line-strong p-6">
           <StatusGlyph status="error" label={error} />
         </div>
       </FullScreenMessage>
@@ -97,10 +93,6 @@ export default function Tv() {
       containerRef={containerRef}
       hasAnimatedRef={hasAnimatedRef}
       titleRef={titleRef}
-      timerRef={timerRef}
-      prevTimerRef={prevTimerRef}
-      updatedLabelRef={updatedLabelRef}
-      prevUpdatedRef={prevUpdatedRef}
       loading={loading}
       room={room}
       ended={ended}
@@ -120,10 +112,6 @@ function TvContent({
   containerRef,
   hasAnimatedRef,
   titleRef,
-  timerRef,
-  prevTimerRef,
-  updatedLabelRef,
-  prevUpdatedRef,
   loading,
   room,
   ended,
@@ -151,7 +139,7 @@ function TvContent({
         translateY: [-12, 0],
         opacity: [0, 1],
         duration: 200,
-        ease: 'steps(3)',
+        ease: steps(3),
       })
     }
 
@@ -173,7 +161,7 @@ function TvContent({
         translateY: [16, 0],
         opacity: [0, 1],
         duration: 220,
-        ease: 'steps(3)',
+        ease: steps(3),
         delay: stagger(80, { start: 100 }),
       })
     }
@@ -185,44 +173,14 @@ function TvContent({
         translateY: [12, 0],
         opacity: [0, 1],
         duration: 200,
-        ease: 'steps(3)',
+        ease: steps(3),
         delay: 280,
       })
     }
   }, [loading, containerRef, hasAnimatedRef, titleRef])
 
-  // Timer label scramble on each tick
-  useEffect(() => {
-    if (!timerRef.current || prefersReducedMotion()) return
-    if (timerLabel === prevTimerRef.current) return
-    prevTimerRef.current = timerLabel
-
-    animate(timerRef.current, {
-      textContent: scrambleText({
-        text: timerLabel || '',
-        revealRate: 40,
-        chars: '0-9:',
-      }),
-    })
-  }, [timerLabel, timerRef, prevTimerRef])
-
-  // "Updated X ago" counter scramble
-  useEffect(() => {
-    if (!updatedLabelRef.current || prefersReducedMotion()) return
-    if (updatedString === prevUpdatedRef.current) return
-    prevUpdatedRef.current = updatedString
-
-    animate(updatedLabelRef.current, {
-      textContent: scrambleText({
-        text: updatedString,
-        revealRate: 50,
-        chars: '0-9:',
-      }),
-    })
-  }, [updatedString, updatedLabelRef, prevUpdatedRef])
-
   return (
-    <main ref={containerRef} className="min-h-svh bg-bg bg-grid-soft px-4 py-6 md:px-8 text-fg">
+    <main ref={containerRef} className="min-h-svh px-4 py-6 md:px-8 text-fg">
       <div className="mx-auto max-w-6xl">
         {/* Page Header */}
         <section className="tv-header flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-line pb-6">
@@ -249,11 +207,11 @@ function TvContent({
               {timerLabel ? (
                 <>
                   <span>·</span>
-                  <span ref={timerRef} className="tabular-nums font-bold">{timerLabel}</span>
+                  <span className="tabular-nums font-bold">{timerLabel}</span>
                 </>
               ) : null}
               <span>·</span>
-              <span ref={updatedLabelRef} className="tabular-nums">{updatedString}</span>
+              <span className="tabular-nums">{updatedString}</span>
               {room.code ? (
                 <>
                   <span>·</span>
