@@ -1,10 +1,7 @@
 import { loadPyodide } from 'pyodide'
-import wasmURL from 'pyodide/pyodide.asm.wasm?url'
-import stdlibURL from 'pyodide/python_stdlib.zip?url'
-import lockURL from 'pyodide/pyodide-lock.json?url'
 import { PYTHON_HARNESS } from './pythonHarness'
 
-const indexURL = wasmURL.slice(0, wasmURL.lastIndexOf('/') + 1)
+const indexURL = `${import.meta.env.BASE_URL}pyodide/`
 
 let pyodide = null
 let loading = null
@@ -12,7 +9,7 @@ let loading = null
 async function getPyodide() {
   if (pyodide) return pyodide
   if (!loading) {
-    loading = loadPyodide({ indexURL, stdLibURL: stdlibURL, lockFileURL: lockURL }).then((instance) => {
+    loading = loadPyodide({ indexURL }).then((instance) => {
       pyodide = instance
       pyodide.runPython(PYTHON_HARNESS)
       self.postMessage({ type: 'ready' })

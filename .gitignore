@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Copied from node_modules by the Vite plugin in vite.config.js
+public/pyodide/
+
 # Environment variables (keep .env.example tracked as the template)
 .env
 .env.*
