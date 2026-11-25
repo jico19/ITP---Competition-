@@ -72,7 +72,7 @@ export default function TopBar() {
             </p>
           ) : (
             <Link
-              to="/"
+              to="/join"
               className="inline-flex h-8 items-center border border-invert-bg bg-invert-bg px-3 font-mono text-xs font-bold uppercase tracking-wider text-invert-fg hover:shadow-hard-sm"
             >
               &gt; JOIN

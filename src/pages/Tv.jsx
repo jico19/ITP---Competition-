@@ -7,7 +7,7 @@ import StatusGlyph from '../components/StatusGlyph'
 import { useCountdown } from '../hooks/useCountdown'
 import { useTvData } from '../hooks/useTvData'
 import { formatDuration } from '../lib/formatDuration'
-import { prefersReducedMotion } from '../lib/motion'
+import { prefersReducedMotion, snapIn } from '../lib/motion'
 import { useSessionStore } from '../stores/sessionStore'
 
 function FullScreenMessage({ children }) {
@@ -124,6 +124,14 @@ function TvContent({
   activeTab,
   setActiveTab,
 }) {
+  const standingsRef = useRef(null)
+
+  useEffect(() => {
+    if (standingsRef.current && hasAnimatedRef.current) {
+      snapIn(standingsRef.current, { y: 6, duration: 150 })
+    }
+  }, [activeTab, hasAnimatedRef])
+
   // Entrance animation — runs once when data is ready
   useEffect(() => {
     if (loading || hasAnimatedRef.current || !containerRef.current) return
@@ -258,7 +266,7 @@ function TvContent({
         </section>
 
         {/* STANDINGS TABLE SECTION */}
-        <section className="tv-standings mt-10">
+        <section ref={standingsRef} className="tv-standings mt-10">
           <LeaderboardTable
             players={restRows}
             currentUserId={profile?.id}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { animate, scrambleText, steps, stagger } from 'animejs'
+import { animate, scrambleText, steps } from 'animejs'
+import { X } from 'lucide-react'
 import ChallengeCard from '../components/ChallengeCard'
 import ConfirmModal from '../components/ConfirmModal'
 import StatusGlyph from '../components/StatusGlyph'
@@ -10,7 +11,7 @@ import { useCountdown } from '../hooks/useCountdown'
 import { useRoom } from '../hooks/useRoom'
 import { useSession } from '../hooks/useSession'
 import { formatDuration } from '../lib/formatDuration'
-import { prefersReducedMotion } from '../lib/motion'
+import { prefersReducedMotion, staggerReveal } from '../lib/motion'
 import { supabase } from '../lib/supabase'
 import { useSessionStore } from '../stores/sessionStore'
 
@@ -169,13 +170,7 @@ export default function Challenges() {
     if (!gridRef.current) return
     const cards = gridRef.current.querySelectorAll('.challenge-card-item')
     if (cards.length > 0) {
-      animate(cards, {
-        opacity: [0, 1],
-        translateY: [12, 0],
-        delay: stagger(40),
-        duration: 180,
-        ease: steps(3),
-      })
+      staggerReveal(cards, { y: 12, duration: 190, step: 35 })
     }
   }, [filteredChallenges, activeFilter])
 
@@ -190,6 +185,7 @@ export default function Challenges() {
   if (!profile) return <NeedRoom />
 
   const ratio = totalCount === 0 ? 0 : solvedCount / totalCount
+  const percent = Math.round(ratio * 100)
   const filledBlocks = Math.round(ratio * 10)
   const progressCells = '■'.repeat(filledBlocks) + '□'.repeat(10 - filledBlocks)
 
@@ -255,6 +251,7 @@ export default function Challenges() {
             aria-label={`${solvedCount} of ${totalCount} solved`}
           >
             <span className="tracking-widest" aria-hidden="true">[{progressCells}]</span>
+            <span className="text-sm text-fg-muted">{percent}%</span>
             <span ref={progressRef}>{solvedCount}/{totalCount} solved</span>
           </div>
         </div>
@@ -301,10 +298,10 @@ export default function Challenges() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="ml-1 text-xs text-fg-muted hover:text-fg font-mono cursor-pointer"
+              className="ml-1 inline-flex items-center justify-center text-fg-muted hover:text-fg cursor-pointer"
               aria-label="Clear search"
             >
-              ×
+              <X size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
           ) : null}
         </div>

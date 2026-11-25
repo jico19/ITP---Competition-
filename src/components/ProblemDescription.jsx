@@ -19,6 +19,7 @@ const EXAMPLE_HEADINGS = new Set([
 
 const ORDERED_ITEM = /^(\s*)(\d+)\.\s+(.*)$/
 const BULLET_ITEM = /^(\s*)-\s+(.*)$/
+const INLINE_EXAMPLE = /^\*\*Example:\*\*\s*(.*)$/i
 
 function isHeading(line) {
   const key = line.trim().toLowerCase()
@@ -26,7 +27,12 @@ function isHeading(line) {
 }
 
 function isBlockStart(line) {
-  return isHeading(line) || ORDERED_ITEM.test(line) || BULLET_ITEM.test(line)
+  return (
+    isHeading(line) ||
+    INLINE_EXAMPLE.test(line) ||
+    ORDERED_ITEM.test(line) ||
+    BULLET_ITEM.test(line)
+  )
 }
 
 function indentClass(spaces) {
@@ -65,6 +71,13 @@ function parseDescription(text) {
         index += 1
       }
       blocks.push({ kind: 'example', label: line.trim(), lines: payload })
+      continue
+    }
+
+    const inlineExample = line.match(INLINE_EXAMPLE)
+    if (inlineExample) {
+      blocks.push({ kind: 'example', label: 'Example:', lines: [inlineExample[1].trim()] })
+      index += 1
       continue
     }
 

@@ -1,10 +1,14 @@
+import { useEffect, useRef } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { useCountdown } from '../hooks/useCountdown'
 import { formatDuration } from '../lib/formatDuration'
+import { popStamp } from '../lib/motion'
 import StatusGlyph from './StatusGlyph'
 
 export default function RoundBanner({ room, loading, error, onRetry }) {
   const remaining = useCountdown(room?.ends_at)
+  const bannerRef = useRef(null)
+  const prevStatusRef = useRef(null)
 
   let status = 'loading'
   let title = 'Checking round status'
@@ -38,8 +42,16 @@ export default function RoundBanner({ room, loading, error, onRetry }) {
     message = 'Submissions are closed.'
   }
 
+  useEffect(() => {
+    if (prevStatusRef.current && prevStatusRef.current !== status && bannerRef.current) {
+      popStamp(bannerRef.current, { duration: 180 })
+    }
+    prevStatusRef.current = status
+  }, [status])
+
   return (
     <div
+      ref={bannerRef}
       className={`mt-6 border bg-surface-1 p-4 ${
         status === 'error' ? 'border-dashed border-line-strong' : 'border-line-strong'
       }`}

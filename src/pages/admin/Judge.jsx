@@ -5,6 +5,7 @@ import { useAdminChallenges } from '../../hooks/useAdminChallenges'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
 import { useJudgeScore } from '../../hooks/useJudgeScore'
 import { useRoomPlayers } from '../../hooks/useRoomPlayers'
+import { toast } from '../../stores/toastStore'
 
 function SelectorLabel({ children, value, onChange, disabled, options, placeholder }) {
   return (
@@ -107,6 +108,7 @@ export default function Judge() {
     }
 
     await score.save(scores, total, selectedChallenge.points)
+    toast(`saved ${total}/${selectedChallenge.points} pts`, { kind: 'ok' })
   }
 
   const roomOptions = rooms.map((room) => ({

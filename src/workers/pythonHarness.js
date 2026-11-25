@@ -1,5 +1,5 @@
 export const PYTHON_HARNESS = `
-import io, sys, json
+import ast, io, sys, json
 
 def _norm(text):
     if text is None:
@@ -26,6 +26,16 @@ def _error_line(exc):
         return exc.lineno
     return None
 
+def _call_passed(got_value, got_repr, expected_text):
+    try:
+        expected_value = ast.literal_eval(expected_text)
+    except Exception:
+        return _norm(got_repr) == _norm(expected_text)
+    try:
+        return got_value == expected_value
+    except Exception:
+        return _norm(got_repr) == _norm(expected_text)
+
 def _run_one(payload):
     code = payload["code"]
     call = payload.get("call")
@@ -40,11 +50,19 @@ def _run_one(payload):
     result = {"passed": False, "visible": visible}
     try:
         exec(compile(code, "<player>", "exec"), g)
-        got = repr(eval(call, g)) if call else out.getvalue()
-        result["stdout"] = out.getvalue()
+        stdout = out.getvalue()
+        result["stdout"] = stdout
+        if call:
+            got_value = eval(call, g)
+            got = repr(got_value)
+            result["passed"] = _call_passed(got_value, got, expected)
+            if not result["passed"] and got_value is None and _norm(stdout):
+                result["hint"] = "Your function returned None. This test calls your function and checks the return value. Did you print instead of return?"
+        else:
+            got = stdout
+            result["passed"] = _norm(got) == _norm(expected)
         result["got"] = got
         result["expected"] = expected
-        result["passed"] = _norm(got) == _norm(expected)
     except BaseException as exc:
         result["error"] = type(exc).__name__ + ": " + str(exc)
         line = _error_line(exc)
@@ -53,7 +71,10 @@ def _run_one(payload):
     finally:
         sys.stdout = previous
     if not visible:
-        return {"passed": result["passed"], "visible": False}
+        hidden = {"passed": result["passed"], "visible": False}
+        if "hint" in result:
+            hidden["hint"] = result["hint"]
+        return hidden
     return result
 
 def _run_from_payload():

@@ -7,7 +7,6 @@ import StatusGlyph from '../../components/StatusGlyph'
 import Terminal from '../../components/Terminal'
 import { usePyEngine } from '../../hooks/usePyEngine'
 import { getReadableError } from '../../lib/errors'
-import { formatTestResults } from '../../lib/formatTestResults'
 import { runPython } from '../../lib/pyRunner'
 import { supabase } from '../../lib/supabase'
 
@@ -154,9 +153,8 @@ function TestRow({ row, index, onChange, onRemove }) {
       </label>
       <p className="mt-2 text-xs text-fg-muted">
         {row.kind === 'call'
-          ? 'Use Python repr, e.g. [2, 4] or'
-          : 'One line per input() call. Trailing whitespace is ignored.'}
-        {row.kind === 'call' ? " 'cy'." : ''}
+          ? "Function call test: the runner evals this call and compares the return value. Use Python repr for expected, e.g. [2, 4] or 'cy'. Players should return the value, not print it."
+          : 'stdin/stdout test: one line per input() call. The runner compares captured stdout; trailing whitespace is ignored.'}
       </p>
     </div>
   )
@@ -199,32 +197,40 @@ function RubricRow({ row, index, onChange, onRemove }) {
 function TestItPanel({ tests, initialCode }) {
   const engine = usePyEngine()
   const [solution, setSolution] = useState(initialCode)
-  const [lines, setLines] = useState([])
+  const [results, setResults] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [stdoutText, setStdoutText] = useState('')
   const [running, setRunning] = useState(false)
 
   async function handleRun() {
     if (running || !engine.ready) return
     setRunning(true)
+    setResults(null)
+    setStdoutText('')
+    setSummary({ kind: 'running', text: `[…] RUNNING · running ${tests.length} test(s)` })
 
     const revealedTests = tests.map((test) => ({ ...test, visible: true }))
-    setLines([{ kind: 'info', text: `[…] running ${revealedTests.length} test(s)` }])
 
     try {
       const result = await runPython(solution, revealedTests)
-      setLines([
-        ...formatTestResults(result.results),
-        {
-          kind: 'summary',
-          text: `[✓] passed ${result.passed}/${result.total} tests`,
-        },
-      ])
+      setResults(result.results)
+      const stdouts = result.results
+        .map((res, i) => (res.stdout ? `--- case ${i + 1} ---\n${res.stdout}` : null))
+        .filter(Boolean)
+        .join('\n\n')
+      setStdoutText(stdouts)
+      const allPassed = revealedTests.length > 0 && result.passed === result.total
+      setSummary({
+        kind: allPassed ? 'accepted' : 'wrong',
+        text: allPassed
+          ? `[✓] ACCEPTED · all ${result.total} tests passed`
+          : `[!] WRONG ANSWER · ${result.passed}/${result.total} passed`,
+      })
     } catch (err) {
-      setLines([
-        {
-          kind: 'error',
-          text: `[!] ${getReadableError(err, 'Python run failed.')}`,
-        },
-      ])
+      setSummary({
+        kind: 'error',
+        text: `[!] ERROR · ${getReadableError(err, 'Python run failed.')}`,
+      })
     } finally {
       setRunning(false)
     }
@@ -258,7 +264,14 @@ function TestItPanel({ tests, initialCode }) {
         {running ? '[...] running tests' : '> run'}
       </button>
       <div className="mt-6">
-        <Terminal lines={lines} engine={engine} />
+        <Terminal
+          tests={tests.map((test) => ({ ...test, visible: true }))}
+          results={results}
+          running={running}
+          engine={engine}
+          summary={summary}
+          stdoutText={stdoutText}
+        />
       </div>
     </section>
   )

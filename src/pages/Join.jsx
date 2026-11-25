@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal'
 import StatusGlyph from '../components/StatusGlyph'
 import { useScrambleAnimation } from '../hooks/useScrambleAnimation'
 import { useSession } from '../hooks/useSession'
 import { getReadableError } from '../lib/errors'
+import { shakeError, snapIn } from '../lib/motion'
 import { suggestDisplayName } from '../lib/names'
 import { supabase } from '../lib/supabase'
 import { useSessionStore } from '../stores/sessionStore'
@@ -28,6 +29,8 @@ function JoinForm({ initialName, isRejoin }) {
   const setRoom = useSessionStore((s) => s.setRoom)
 
   const roomCodeRef = useRef(null)
+  const cardRef = useRef(null)
+  const formShellRef = useRef(null)
   const [displayName, setDisplayName] = useState(initialName)
   const [roomCode, setRoomCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,6 +38,18 @@ function JoinForm({ initialName, isRejoin }) {
   const [roomUnavailableOpen, setRoomUnavailableOpen] = useState(false)
 
   const { scrambleTo } = useScrambleAnimation({ defaultRevealRate: 20 })
+
+  useEffect(() => {
+    if (cardRef.current) {
+      snapIn(cardRef.current, { y: 12, duration: 200 })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (error && formShellRef.current) {
+      shakeError(formShellRef.current)
+    }
+  }, [error])
 
   function handleSuggest() {
     const nextName = suggestDisplayName()
@@ -104,7 +119,7 @@ function JoinForm({ initialName, isRejoin }) {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 md:px-6">
-      <div className="border border-line-strong bg-surface-1 p-6 md:p-9">
+      <div ref={cardRef} className="border border-line-strong bg-surface-1 p-6 md:p-9">
         <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Join room</h1>
         <p className="mt-3 max-w-xl text-sm text-fg-muted">
@@ -113,7 +128,7 @@ function JoinForm({ initialName, isRejoin }) {
             : 'Enter a display name and room code to join.'}
         </p>
 
-        <div className="mt-6 border border-line-strong bg-surface-2">
+        <div ref={formShellRef} className="mt-6 border border-line-strong bg-surface-2">
           <div className="flex h-8 items-center gap-2 border-b border-line px-3 text-xs text-fg-muted">
             <span aria-hidden="true">■ □ □</span>
             <span>~/join</span>

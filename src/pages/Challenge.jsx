@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import CodeEditor from '../components/CodeEditor'
 import ConfirmModal from '../components/ConfirmModal'
@@ -13,8 +13,10 @@ import { usePyEngine } from '../hooks/usePyEngine'
 import { useRoom } from '../hooks/useRoom'
 import { useSession } from '../hooks/useSession'
 import { getReadableError } from '../lib/errors'
+import { flashHighlight, popStamp, snapIn } from '../lib/motion'
 import { runPython } from '../lib/pyRunner'
 import { supabase } from '../lib/supabase'
+import { toast } from '../stores/toastStore'
 
 function formatTimer(ms) {
   if (ms === null || ms === undefined) return '--:--'
@@ -110,6 +112,31 @@ export default function Challenge() {
   const [leftTab, setLeftTab] = useState('desc')
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [localSubmissions, setLocalSubmissions] = useState([])
+  const leftTabBodyRef = useRef(null)
+  const headerTimerRef = useRef(null)
+  const solvedBadgeRef = useRef(null)
+
+  const isUrgent =
+    roomQuery.room?.status === 'live' && remaining !== null && remaining > 0 && remaining <= 60_000
+  const secondBucket = remaining !== null ? Math.floor(remaining / 1000) : null
+
+  useEffect(() => {
+    if (leftTabBodyRef.current) {
+      snapIn(leftTabBodyRef.current, { y: 6, duration: 150 })
+    }
+  }, [leftTab])
+
+  useEffect(() => {
+    if (isUrgent && headerTimerRef.current) {
+      flashHighlight(headerTimerRef.current, { duration: 220 })
+    }
+  }, [isUrgent, secondBucket])
+
+  useEffect(() => {
+    if (solved && solvedBadgeRef.current) {
+      popStamp(solvedBadgeRef.current, { duration: 200 })
+    }
+  }, [solved])
 
   // Initialize code when challenge loads
   if (challenge && !initializedCode) {
@@ -175,8 +202,8 @@ export default function Challenge() {
 
       // Collect stdout
       const stdouts = outcome.results
-        .filter((r) => r.stdout)
-        .map((r, i) => `--- case ${i + 1} ---\n${r.stdout}`)
+        .map((r, i) => (r.stdout ? `--- case ${i + 1} ---\n${r.stdout}` : null))
+        .filter(Boolean)
         .join('\n\n')
       setStdoutText(stdouts)
 
@@ -240,12 +267,16 @@ export default function Challenge() {
           kind: 'accepted',
           text: `[✓] ACCEPTED · solution submitted! +${data.points} pts`,
         })
+        toast(`solution accepted · +${data.points} pts`, { kind: 'ok' })
+      } else {
+        toast(`submission saved · ${outcome.passed}/${outcome.total} passed`, { kind: 'info' })
       }
     } catch (err) {
       setSummary({
         kind: 'error',
         text: `[!] SUBMISSION FAILED · ${getReadableError(err, 'Could not save submission.')}`,
       })
+      toast('submission failed', { kind: 'error' })
     }
   }
 
@@ -255,6 +286,7 @@ export default function Challenge() {
     setStdoutText('')
     setSummary(null)
     setResetModalOpen(false)
+    toast('editor reset to starter', { kind: 'info' })
   }
 
   return (
@@ -275,7 +307,10 @@ export default function Challenge() {
 
         <div className="flex items-center gap-4 shrink-0">
           <span
-            className="font-bold text-sm tabular-nums tracking-wider text-fg"
+            ref={headerTimerRef}
+            className={`font-bold text-sm tabular-nums tracking-wider px-2 py-0.5 ${
+              isUrgent ? 'bg-invert-bg text-invert-fg' : 'text-fg'
+            }`}
             aria-label={`Time remaining: ${formatTimer(remaining)}`}
           >
             {formatTimer(remaining)}
@@ -353,11 +388,14 @@ export default function Challenge() {
                   {challenge.points} pts
                 </span>
                 {solved ? (
-                  <StatusGlyph status="solved" inverted label="solved" />
+                  <span ref={solvedBadgeRef} className="inline-flex">
+                    <StatusGlyph status="solved" inverted label="solved" />
+                  </span>
                 ) : null}
               </div>
             </div>
 
+            <div ref={leftTabBodyRef}>
             {/* Tab: DESC */}
             {leftTab === 'desc' && (
               <div className="space-y-6">
@@ -433,6 +471,7 @@ export default function Challenge() {
                 )}
               </div>
             )}
+            </div>
           </div>
         </section>
 

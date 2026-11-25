@@ -1,7 +1,19 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { popStamp } from '../lib/motion'
 import DifficultyBlocks from './DifficultyBlocks'
 
 export default function ChallengeCard({ challenge, solved, attempted = false, locked = false }) {
+  const cardRef = useRef(null)
+  const prevSolvedRef = useRef(solved)
+
+  useEffect(() => {
+    if (!prevSolvedRef.current && solved && cardRef.current) {
+      popStamp(cardRef.current, { duration: 200 })
+    }
+    prevSolvedRef.current = solved
+  }, [solved])
+
   const number = String(challenge.sort_order ?? '').padStart(3, '0')
   const tag = challenge.type === 'web' ? 'WEB' : (challenge.tier ? challenge.tier.toUpperCase() : 'ALGO')
 
@@ -12,8 +24,9 @@ export default function ChallengeCard({ challenge, solved, attempted = false, lo
 
   return (
     <Link
+      ref={cardRef}
       to={`/challenge/${challenge.id}`}
-      className={`challenge-card-item group block border border-line-strong bg-surface-1 text-fg transition-transform duration-100 ease-[steps(2)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
+      className={`challenge-card-item group block border border-line-strong bg-surface-1 text-fg transition-transform duration-100 ease-[steps(2)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard active:translate-x-0 active:translate-y-0 active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
         locked ? 'bg-hatch opacity-75 pointer-events-none' : ''
       }`}
     >

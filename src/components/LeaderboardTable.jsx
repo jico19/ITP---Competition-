@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { animate, steps, stagger } from 'animejs'
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
 import { flashHighlight, prefersReducedMotion } from '../lib/motion'
@@ -46,6 +46,7 @@ function LeaderboardRow({ player, isMe, totalChallenges, rankStr }) {
   return (
     <div
       ref={rowRef}
+      data-user-id={player.user_id}
       className={`lb-row flex h-13 items-center gap-2 px-2 md:px-4 font-mono transition-colors duration-[120ms] ease-[steps(2)] ${
         isMe
           ? 'bg-invert-bg text-invert-fg font-bold'
@@ -100,11 +101,43 @@ export default function LeaderboardTable({
   const [page, setPage] = useState(1)
   const tableBodyRef = useRef(null)
   const prevPageRef = useRef(1)
+  const prevPositionsRef = useRef(new Map())
 
   const totalPages = Math.max(1, Math.ceil(players.length / pageSize))
   const safePage = Math.min(page, totalPages)
   const startIndex = (safePage - 1) * pageSize
   const visiblePlayers = players.slice(startIndex, startIndex + pageSize)
+
+  // FLIP animation on live rank reorder
+  useLayoutEffect(() => {
+    if (prefersReducedMotion() || !tableBodyRef.current) return
+    const rows = Array.from(tableBodyRef.current.querySelectorAll('.lb-row[data-user-id]'))
+    const prevMap = prevPositionsRef.current
+
+    if (prevMap.size > 0) {
+      for (const row of rows) {
+        const id = row.getAttribute('data-user-id')
+        const prevTop = prevMap.get(id)
+        if (prevTop !== undefined) {
+          const deltaY = prevTop - row.getBoundingClientRect().top
+          if (Math.abs(deltaY) > 2) {
+            animate(row, {
+              translateY: [deltaY, 0],
+              duration: 180,
+              ease: steps(3),
+            })
+          }
+        }
+      }
+    }
+
+    const nextMap = new Map()
+    for (const row of rows) {
+      const id = row.getAttribute('data-user-id')
+      if (id) nextMap.set(id, row.getBoundingClientRect().top)
+    }
+    prevPositionsRef.current = nextMap
+  }, [visiblePlayers])
 
   // Stagger rows on page change
   useEffect(() => {

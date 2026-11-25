@@ -1,6 +1,6 @@
 import { useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { animate, steps } from 'animejs'
+import { animate } from 'animejs'
 import { X } from 'lucide-react'
 import { prefersReducedMotion } from '../lib/motion'
 
@@ -106,9 +106,10 @@ export default function Modal({
     if (dialogRef.current && !prefersReducedMotion()) {
       animate(dialogRef.current, {
         scale: [0.96, 1],
+        translateY: [8, 0],
         opacity: [0, 1],
-        duration: 140,
-        ease: steps(2),
+        duration: 160,
+        ease: 'outExpo',
       })
     }
 

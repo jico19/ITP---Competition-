@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
+import { popStamp } from '../lib/motion'
 import StatusGlyph from './StatusGlyph'
 
 function getProgressBlocks(solved = 0, total = 10) {
@@ -17,9 +19,20 @@ function PodiumCard({ rank, player, totalChallenges, isCenter }) {
   const animatedSolved = useAnimatedNumber(player?.solved ?? 0, { duration: 400 })
   const points = player ? `${String(animatedPoints).padStart(4, '0')} pts` : '0000 pts'
   const bar = getProgressBlocks(animatedSolved, totalChallenges)
+  const cardRef = useRef(null)
+  const prevKeyRef = useRef(`${player?.user_id ?? ''}:${rawPoints}`)
+
+  useEffect(() => {
+    const nextKey = `${player?.user_id ?? ''}:${rawPoints}`
+    if (prevKeyRef.current !== nextKey && player && cardRef.current) {
+      popStamp(cardRef.current, { duration: 190 })
+    }
+    prevKeyRef.current = nextKey
+  }, [player, rawPoints])
 
   return (
     <div
+      ref={cardRef}
       className={`tv-podium-card flex flex-col border border-line-strong bg-surface-1 transition-transform duration-[120ms] ease-[steps(2)] ${
         isCenter
           ? 'order-1 sm:order-2 sm:-translate-y-2 shadow-hard'

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import RequireAdmin from './components/RequireAdmin'
 import StaggerBackground from './components/StaggerBackground'
+import ToastContainer from './components/Toast'
 import TopBar from './components/TopBar'
 import { usePresence } from './hooks/usePresence'
 import { usePyEngine } from './hooks/usePyEngine'
 import Challenge from './pages/Challenge'
 import Challenges from './pages/Challenges'
 import Join from './pages/Join'
+import Landing from './pages/Landing'
 import Tv from './pages/Tv'
 import ChallengeForm from './pages/admin/ChallengeForm'
 import ChallengeList from './pages/admin/ChallengeList'
@@ -86,7 +88,8 @@ export default function App() {
       <div className="relative z-10 flex min-h-svh flex-col">
         <TopBar />
         <Routes>
-          <Route path="/" element={<Join />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/join" element={<Join />} />
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/challenge/:id" element={<Challenge />} />
           <Route path="/tv/:roomCode" element={<Tv />} />
@@ -101,6 +104,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ToastContainer />
       </div>
     </>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
 import AdminNav from '../../components/AdminNav'
@@ -7,13 +7,27 @@ import DifficultyBlocks from '../../components/DifficultyBlocks'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminChallenges } from '../../hooks/useAdminChallenges'
 import { getReadableError } from '../../lib/errors'
+import { staggerReveal } from '../../lib/motion'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../stores/toastStore'
 
 export default function ChallengeList() {
   const { challenges, loading, error, reload } = useAdminChallenges()
   const [busyId, setBusyId] = useState('')
   const [actionError, setActionError] = useState('')
   const [challengeToDelete, setChallengeToDelete] = useState(null)
+  const listRef = useRef(null)
+  const hasAnimatedRef = useRef(false)
+
+  useEffect(() => {
+    if (!loading && challenges.length > 0 && !hasAnimatedRef.current && listRef.current) {
+      hasAnimatedRef.current = true
+      const rows = listRef.current.querySelectorAll('.admin-ch-row')
+      if (rows.length) {
+        staggerReveal(rows, { y: 8, duration: 170, step: 30 })
+      }
+    }
+  }, [loading, challenges])
 
   async function handleToggle(challenge) {
     setBusyId(challenge.id)
@@ -24,6 +38,12 @@ export default function ChallengeList() {
         .update({ published: !challenge.published })
         .eq('id', challenge.id)
       if (updateError) throw updateError
+      toast(
+        !challenge.published
+          ? `published "${challenge.title}"`
+          : `unpublished "${challenge.title}"`,
+        { kind: 'ok' },
+      )
       await reload()
     } catch (err) {
       setActionError(getReadableError(err, 'Could not update challenge.'))
@@ -43,6 +63,7 @@ export default function ChallengeList() {
         .delete()
         .eq('id', challengeToDelete.id)
       if (deleteError) throw deleteError
+      toast(`deleted "${challengeToDelete.title}"`, { kind: 'info' })
       setChallengeToDelete(null)
       await reload()
     } catch (err) {
@@ -103,7 +124,7 @@ export default function ChallengeList() {
         ) : null}
 
         {!loading && !error && challenges.length > 0 ? (
-          <section className="mt-6 border border-line-strong bg-surface-1">
+          <section ref={listRef} className="mt-6 border border-line-strong bg-surface-1">
             <div className="hidden grid-cols-[minmax(0,1fr)_120px_90px_90px_130px_320px] gap-4 border-b border-line-strong px-4 py-3 text-xs font-bold uppercase tracking-widest text-fg-muted lg:grid">
               <span>title</span>
               <span>difficulty</span>
@@ -116,7 +137,7 @@ export default function ChallengeList() {
             {challenges.map((challenge) => (
               <div
                 key={challenge.id}
-                className="grid gap-3 border-b border-dashed border-line p-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_120px_90px_90px_130px_320px] lg:items-center lg:gap-4"
+                className="admin-ch-row grid gap-3 border-b border-dashed border-line p-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_120px_90px_90px_130px_320px] lg:items-center lg:gap-4"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-fg">{challenge.title}</p>

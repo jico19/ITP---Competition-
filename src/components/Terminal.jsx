@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { animate, scrambleText, steps, stagger } from 'animejs'
-import { prefersReducedMotion } from '../lib/motion'
+import { popStamp, prefersReducedMotion, snapIn } from '../lib/motion'
 
 export default function Terminal({
   tests = [],
@@ -45,9 +44,22 @@ export default function Terminal({
   }
 
   const casesContainerRef = useRef(null)
+  const tabBodyRef = useRef(null)
   const bannerRef = useRef(null)
   const prevBannerRef = useRef(bannerText)
   const animRef = useRef(null)
+
+  useEffect(() => {
+    if (tabBodyRef.current) {
+      snapIn(tabBodyRef.current, { y: 6, duration: 150 })
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (bannerKind === 'accepted' && bannerRef.current) {
+      popStamp(bannerRef.current, { duration: 180 })
+    }
+  }, [bannerKind])
 
   useEffect(() => {
     if (prevBannerRef.current === bannerText) return
@@ -136,7 +148,7 @@ export default function Terminal({
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 overflow-auto p-4 min-h-[180px] max-h-[300px]">
+      <div ref={tabBodyRef} className="flex-1 overflow-auto p-4 min-h-[180px] max-h-[300px]">
         {activeTab === 'tests' && (
           <div className="space-y-4">
             {/* Result Summary Banner */}
@@ -208,10 +220,17 @@ export default function Terminal({
                               got <code className="text-fg">{JSON.stringify(res.got)}</code>
                             </p>
                           )}
+                          {res.stdout ? (
+                            <p>
+                              stdout <code className="text-fg">{JSON.stringify(res.stdout)}</code>
+                            </p>
+                          ) : null}
+                          {res.hint ? <p className="text-fg">{res.hint}</p> : null}
                         </div>
                       ) : (
-                        <div className="pl-6 text-[11px] text-fg-muted">
-                          (hidden test failed)
+                        <div className="pl-6 text-[11px] text-fg-muted space-y-0.5">
+                          <p>(hidden test failed)</p>
+                          {res.hint ? <p className="text-fg">{res.hint}</p> : null}
                         </div>
                       )}
                     </div>

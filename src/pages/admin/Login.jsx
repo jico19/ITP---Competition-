@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminStatus } from '../../hooks/useAdminStatus'
 import { getReadableError } from '../../lib/errors'
+import { shakeError, snapIn } from '../../lib/motion'
 import { supabase } from '../../lib/supabase'
 import { useSessionStore } from '../../stores/sessionStore'
 
@@ -17,8 +18,22 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const cardRef = useRef(null)
+  const formShellRef = useRef(null)
 
   const from = location.state?.from ?? '/admin'
+
+  useEffect(() => {
+    if (status !== 'loading' && status !== 'admin' && cardRef.current) {
+      snapIn(cardRef.current, { y: 12, duration: 190 })
+    }
+  }, [status])
+
+  useEffect(() => {
+    if (error && formShellRef.current) {
+      shakeError(formShellRef.current)
+    }
+  }, [error])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -56,12 +71,12 @@ export default function Login() {
 
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-xl items-center px-4 py-10 md:px-6">
-      <div className="w-full border border-line-strong bg-surface-1 p-6 md:p-9">
+      <div ref={cardRef} className="w-full border border-line-strong bg-surface-1 p-6 md:p-9">
         <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin sign in</h1>
         <p className="mt-3 text-sm text-fg-muted">Use your admin email and password.</p>
 
-        <div className="mt-6 border border-line-strong bg-surface-2">
+        <div ref={formShellRef} className="mt-6 border border-line-strong bg-surface-2">
           <div className="flex h-8 items-center gap-2 border-b border-line px-3 text-xs text-fg-muted">
             <span aria-hidden="true">■ □ □</span>
             <span>~/admin/login</span>
