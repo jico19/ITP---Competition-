@@ -72,7 +72,7 @@ export default function Login() {
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-xl items-center px-4 py-10 md:px-6">
       <div ref={cardRef} className="w-full border border-line-strong bg-surface-1 p-6 md:p-9">
-        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin sign in</h1>
         <p className="mt-3 text-sm text-fg-muted">Use your admin email and password.</p>
 

@@ -197,7 +197,7 @@ Difficulty is filled blocks with `aria-label`: `■□□□□` easy, `■■�
 
 ### 8.1 Join (`/`)
 
-Terminal-framed card. Label `ITP Competition`, title `# Join room`, one-line explanation, labeled display name and room code inputs, suggest-name button, error line, primary `$ join` button. Loading and error states are explicit. Countdown is not shown here because room data is not loaded yet.
+Terminal-framed card. Label `ITP: Exit Code 0`, title `# Join room`, one-line explanation, labeled display name and room code inputs, suggest-name button, error line, primary `$ join` button. Loading and error states are explicit. Countdown is not shown here because room data is not loaded yet.
 
 ### 8.2 Challenge board (`/challenges`)
 

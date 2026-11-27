@@ -295,7 +295,7 @@ export default function Rooms() {
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Rooms</h1>
             <AdminNav />
           </div>

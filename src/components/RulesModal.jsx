@@ -1,6 +1,6 @@
 import Modal from './Modal'
 
-export default function RulesModal({ isOpen, onClose }) {
+export default function RulesModal({ isOpen, onClose, actionLabel = '$ close' }) {
   return (
     <Modal
       isOpen={isOpen}
@@ -15,7 +15,7 @@ export default function RulesModal({ isOpen, onClose }) {
             onClick={onClose}
             className="h-9 border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg hover:shadow-hard-sm"
           >
-            $ close
+            {actionLabel}
           </button>
         </div>
       }

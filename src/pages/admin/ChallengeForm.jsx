@@ -452,7 +452,7 @@ export default function ChallengeForm() {
     <main className="min-h-svh px-4 py-8 text-fg md:px-6">
       <div className="mx-auto w-full max-w-4xl">
         <header>
-          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg">
             # {isEdit ? 'Edit challenge' : 'New challenge'}
           </h1>

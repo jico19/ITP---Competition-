@@ -641,7 +641,7 @@ export default function Landing() {
   function handleJoin(e) {
     e.preventDefault()
     const code = e.target.elements.room.value.trim().toUpperCase()
-    navigate(code ? `/join?room=${code}` : '/join')
+    navigate(code ? `/join?room=${encodeURIComponent(code)}` : '/join')
   }
 
   return (
@@ -655,14 +655,17 @@ export default function Landing() {
               <ScrambleText text="Live Coding Competition · ITP 2026" delay={180} />
             </div>
 
-            <h1 className="opacity-0 text-4xl sm:text-5xl md:text-6xl font-bold leading-tight tracking-tight text-fg max-w-3xl mb-6">
-              <ScrambleText text="Code Fast." delay={260} revealRate={30} />
+            <h1 className="opacity-0 text-4xl sm:text-5xl md:text-6xl font-bold leading-tight tracking-tight text-fg max-w-3xl mb-2">
+              <ScrambleText text="ITP:" delay={260} revealRate={30} />
               {' '}
               <em className="not-italic italic font-normal">
-                <ScrambleText text="Think Sharp" delay={480} revealRate={30} />
+                <ScrambleText text="Exit Code 0" delay={420} revealRate={30} />
               </em>
-              <span className="text-fg-muted">.</span>
             </h1>
+
+            <p className="opacity-0 mb-4 text-sm tracking-wide text-fg-muted">
+              Code Fast. Think Sharp.
+            </p>
 
             <p className="opacity-0 text-sm leading-7 text-fg-muted max-w-xl mb-10">
               <ScrambleText

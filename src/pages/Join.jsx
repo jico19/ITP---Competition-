@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Modal from '../components/Modal'
+import RulesModal from '../components/RulesModal'
 import StatusGlyph from '../components/StatusGlyph'
 import { useScrambleAnimation } from '../hooks/useScrambleAnimation'
 import { useSession } from '../hooks/useSession'
@@ -24,18 +25,22 @@ function validate(displayName, roomCode) {
 
 function JoinForm({ initialName, isRejoin }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const prefilledCode = (searchParams.get('room') ?? '').trim().toUpperCase()
   const setSession = useSessionStore((s) => s.setSession)
   const setProfile = useSessionStore((s) => s.setProfile)
   const setRoom = useSessionStore((s) => s.setRoom)
 
+  const displayNameRef = useRef(null)
   const roomCodeRef = useRef(null)
   const cardRef = useRef(null)
   const formShellRef = useRef(null)
   const [displayName, setDisplayName] = useState(initialName)
-  const [roomCode, setRoomCode] = useState('')
+  const [roomCode, setRoomCode] = useState(prefilledCode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [roomUnavailableOpen, setRoomUnavailableOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
 
   const { scrambleTo } = useScrambleAnimation({ defaultRevealRate: 20 })
 
@@ -43,7 +48,10 @@ function JoinForm({ initialName, isRejoin }) {
     if (cardRef.current) {
       snapIn(cardRef.current, { y: 12, duration: 200 })
     }
-  }, [])
+    if (prefilledCode) {
+      requestAnimationFrame(() => displayNameRef.current?.focus())
+    }
+  }, [prefilledCode])
 
   useEffect(() => {
     if (error && formShellRef.current) {
@@ -96,7 +104,7 @@ function JoinForm({ initialName, isRejoin }) {
       if (roomError) throw roomError
 
       setRoom(joinedRoom)
-      navigate('/challenges')
+      setRulesOpen(true)
     } catch (err) {
       const message = getReadableError(err, 'Could not join room.')
       if (/invalid room code|room has ended/i.test(message)) {
@@ -117,10 +125,15 @@ function JoinForm({ initialName, isRejoin }) {
     requestAnimationFrame(() => roomCodeRef.current?.focus())
   }
 
+  function handleRulesClose() {
+    setRulesOpen(false)
+    navigate('/challenges')
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 md:px-6">
       <div ref={cardRef} className="border border-line-strong bg-surface-1 p-6 md:p-9">
-        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP Competition</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Join room</h1>
         <p className="mt-3 max-w-xl text-sm text-fg-muted">
           {isRejoin
@@ -144,6 +157,7 @@ function JoinForm({ initialName, isRejoin }) {
                   <span className="blink-cursor pl-3 text-fg-faint" aria-hidden="true">$</span>
                   <input
                     id="display-name"
+                    ref={displayNameRef}
                     className="h-full w-full bg-transparent px-2 text-sm text-fg outline-none placeholder:text-fg-faint"
                     type="text"
                     value={displayName}
@@ -221,6 +235,12 @@ function JoinForm({ initialName, isRejoin }) {
           That room code has expired or the match no longer exists. Ask the organizer for the current code, then try again.
         </p>
       </Modal>
+
+      <RulesModal
+        isOpen={rulesOpen}
+        onClose={handleRulesClose}
+        actionLabel="$ continue"
+      />
     </main>
   )
 }
