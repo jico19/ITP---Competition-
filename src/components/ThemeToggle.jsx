@@ -7,10 +7,11 @@ function currentTheme() {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ size = 'default' }) {
   const [theme, setTheme] = useState(currentTheme)
   const lightRef = useRef(null)
   const darkRef = useRef(null)
+  const isAdmin = size === 'admin'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -34,7 +35,9 @@ export default function ThemeToggle() {
 
   return (
     <div
-      className="inline-flex h-8 items-center border border-line-strong px-2 font-mono text-xs select-none"
+      className={`inline-flex items-center border border-line-strong font-mono text-xs select-none ${
+        isAdmin ? 'h-11 px-2' : 'h-8 px-2'
+      }`}
       role="group"
       aria-label="Theme toggle"
     >
@@ -45,7 +48,9 @@ export default function ThemeToggle() {
         onClick={() => toggleTo('light')}
         aria-label="Use light theme"
         aria-pressed={theme === 'light'}
-        className={`px-1.5 py-0.5 transition-colors cursor-pointer ${
+        className={`transition-colors cursor-pointer ${
+          isAdmin ? 'inline-flex h-9 min-w-9 items-center justify-center px-2' : 'px-1.5 py-0.5'
+        } ${
           theme === 'light'
             ? 'bg-invert-bg text-invert-fg font-bold'
             : 'text-fg-muted hover:text-fg'
@@ -60,7 +65,9 @@ export default function ThemeToggle() {
         onClick={() => toggleTo('dark')}
         aria-label="Use dark theme"
         aria-pressed={theme === 'dark'}
-        className={`px-1.5 py-0.5 transition-colors cursor-pointer ${
+        className={`transition-colors cursor-pointer ${
+          isAdmin ? 'inline-flex h-9 min-w-9 items-center justify-center px-2' : 'px-1.5 py-0.5'
+        } ${
           theme === 'dark'
             ? 'bg-invert-bg text-invert-fg font-bold'
             : 'text-fg-muted hover:text-fg'

@@ -1,4 +1,5 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
+import AdminSidebar from './AdminSidebar'
 import StatusGlyph from './StatusGlyph'
 import { useAdminStatus } from '../hooks/useAdminStatus'
 
@@ -35,5 +36,12 @@ export default function RequireAdmin() {
     return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />
   }
 
-  return <Outlet />
+  return (
+    <div className="flex min-h-svh flex-col md:flex-row">
+      <AdminSidebar />
+      <div className="min-w-0 flex-1">
+        <Outlet />
+      </div>
+    </div>
+  )
 }

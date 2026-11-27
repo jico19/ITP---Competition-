@@ -12,8 +12,9 @@ export default function TopBar() {
   const room = useSessionStore((s) => s.room)
   const [rulesOpen, setRulesOpen] = useState(false)
 
+  const isAdminShell = pathname.startsWith('/admin') && pathname !== '/admin/login'
   const isTvProjector = searchParams.get('mode') === 'tv' || searchParams.get('tv') === '1'
-  if (pathname.startsWith('/challenge/') || isTvProjector) return null
+  if (isAdminShell || pathname.startsWith('/challenge/') || isTvProjector) return null
 
   const isBoardActive = pathname.startsWith('/challenges')
   const isLeaderboardActive = pathname === '/leaderboard' || pathname.startsWith('/tv')

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import AdminNav from '../../components/AdminNav'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminChallenges } from '../../hooks/useAdminChallenges'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
@@ -130,7 +129,6 @@ export default function Judge() {
         <header>
           <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Judge</h1>
-          <AdminNav />
         </header>
 
         <section className="mt-6 border border-line-strong bg-surface-1 p-6">

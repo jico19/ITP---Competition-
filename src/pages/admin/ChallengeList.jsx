@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
-import AdminNav from '../../components/AdminNav'
 import ConfirmModal from '../../components/ConfirmModal'
 import DifficultyBlocks from '../../components/DifficultyBlocks'
 import StatusGlyph from '../../components/StatusGlyph'
@@ -79,7 +78,6 @@ export default function ChallengeList() {
         <header>
           <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Challenges</h1>
-          <AdminNav />
         </header>
 
         <div className="mt-6 flex justify-end">

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
-import AdminNav from '../../components/AdminNav'
 import CodeEditor from '../../components/CodeEditor'
 import StatusGlyph from '../../components/StatusGlyph'
 import Terminal from '../../components/Terminal'
@@ -456,7 +455,6 @@ export default function ChallengeForm() {
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg">
             # {isEdit ? 'Edit challenge' : 'New challenge'}
           </h1>
-          <AdminNav />
         </header>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">

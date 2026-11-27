@@ -1,14 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
-import AdminNav from '../../components/AdminNav'
 import RoomPlayers from '../../components/RoomPlayers'
 import StatusGlyph from '../../components/StatusGlyph'
 import { useAdminRooms } from '../../hooks/useAdminRooms'
 import { useScrambleAnimation } from '../../hooks/useScrambleAnimation'
 import { getReadableError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
-import { useSessionStore } from '../../stores/sessionStore'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -44,8 +41,6 @@ const primaryButton =
   'inline-flex h-11 items-center justify-center border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:bg-hatch disabled:opacity-50 disabled:text-fg-muted'
 
 export default function Rooms() {
-  const navigate = useNavigate()
-  const clearSession = useSessionStore((s) => s.clearSession)
   const { rooms, counts, loading, error, reload } = useAdminRooms()
 
   const [name, setName] = useState('')
@@ -280,28 +275,12 @@ export default function Rooms() {
     }
   }
 
-  async function handleSignOut() {
-    const { error: signOutError } = await supabase.auth.signOut()
-    if (signOutError) {
-      setActionError(getReadableError(signOutError, 'Could not sign out.'))
-      return
-    }
-    clearSession()
-    navigate('/admin/login', { replace: true })
-  }
-
   return (
     <main className="min-h-svh px-4 py-8 text-fg md:px-6">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Rooms</h1>
-            <AdminNav />
-          </div>
-          <button type="button" onClick={handleSignOut} className={secondaryButton}>
-            sign out
-          </button>
+        <header>
+          <p className="text-xs font-bold uppercase tracking-widest text-fg-muted">ITP: Exit Code 0</p>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg"># Admin · Rooms</h1>
         </header>
 
         <section className="mt-6 border border-line-strong bg-surface-1 p-6">
