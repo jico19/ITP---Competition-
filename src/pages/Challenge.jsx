@@ -13,6 +13,7 @@ import { usePyEngine } from '../hooks/usePyEngine'
 import { useRoom } from '../hooks/useRoom'
 import { useSession } from '../hooks/useSession'
 import { getReadableError } from '../lib/errors'
+import { descriptionWithoutHints, getHints } from '../lib/hints'
 import { flashHighlight, popStamp, snapIn } from '../lib/motion'
 import { runPython } from '../lib/pyRunner'
 import { supabase } from '../lib/supabase'
@@ -95,6 +96,7 @@ export default function Challenge() {
     solved,
     submissions = [],
     judgeScore = null,
+    hintCount = 0,
     loading,
     error,
   } = useChallengeDetail(id, profile?.id, roomQuery.room?.id)
@@ -112,6 +114,8 @@ export default function Challenge() {
   const [leftTab, setLeftTab] = useState('desc')
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [localSubmissions, setLocalSubmissions] = useState([])
+  const [hintState, setHintState] = useState({ key: null, count: 0 })
+  const [revealingHint, setRevealingHint] = useState(false)
   const leftTabBodyRef = useRef(null)
   const headerTimerRef = useRef(null)
   const solvedBadgeRef = useRef(null)
@@ -139,6 +143,9 @@ export default function Challenge() {
   }, [solved])
 
   // Initialize code when challenge loads
+  if (challenge && hintState.key !== challenge.id) {
+    setHintState({ key: challenge.id, count: hintCount })
+  }
   if (challenge && !initializedCode) {
     setCode(challenge.starter_code ?? '')
     setInitializedCode(true)
@@ -188,6 +195,26 @@ export default function Challenge() {
   const tag = isWeb ? 'WEB' : (challenge.tier ? challenge.tier.toUpperCase() : 'ALGO')
 
   const passedCount = testResults ? testResults.filter((r) => r.passed).length : 0
+  const hintsUsed = hintState.key === challenge.id ? hintState.count : hintCount
+  const hints = isWeb ? [] : getHints(challenge.description)
+  const description = descriptionWithoutHints(challenge.description)
+
+  async function handleRevealHint() {
+    if (locked || revealingHint || isWeb || hintsUsed >= hints.length) return
+    setRevealingHint(true)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('use_hint', {
+        p_challenge_id: challenge.id,
+      })
+      if (rpcError) throw rpcError
+      setHintState({ key: challenge.id, count: Number(data) || 0 })
+      toast('hint revealed · −1 pt on future submissions', { kind: 'info' })
+    } catch (err) {
+      toast(`hint failed · ${getReadableError(err, 'Could not reveal hint.')}`, { kind: 'error' })
+    } finally {
+      setRevealingHint(false)
+    }
+  }
 
   // Run tests logic (Python only)
   async function executeRun() {
@@ -267,7 +294,12 @@ export default function Challenge() {
           kind: 'accepted',
           text: `[✓] ACCEPTED · solution submitted! +${data.points} pts`,
         })
-        toast(`solution accepted · +${data.points} pts`, { kind: 'ok' })
+        toast(
+          hintsUsed > 0
+            ? `solution accepted · +${data.points} pts (hints −${hintsUsed})`
+            : `solution accepted · +${data.points} pts`,
+          { kind: 'ok' },
+        )
       } else {
         toast(`submission saved · ${outcome.passed}/${outcome.total} passed`, { kind: 'info' })
       }
@@ -387,6 +419,11 @@ export default function Challenge() {
                 <span className="text-xs font-bold tabular-nums text-fg-muted">
                   {challenge.points} pts
                 </span>
+                {!isWeb && hintsUsed > 0 ? (
+                  <span className="text-xs font-bold tabular-nums text-fg-muted">
+                    -{hintsUsed} pt{hintsUsed === 1 ? '' : 's'} hint
+                  </span>
+                ) : null}
                 {solved ? (
                   <span ref={solvedBadgeRef} className="inline-flex">
                     <StatusGlyph status="solved" inverted label="solved" />
@@ -399,7 +436,7 @@ export default function Challenge() {
             {/* Tab: DESC */}
             {leftTab === 'desc' && (
               <div className="space-y-6">
-                <ProblemDescription text={challenge.description} />
+                <ProblemDescription text={description} />
               </div>
             )}
 
@@ -410,7 +447,7 @@ export default function Challenge() {
                   ## {isWeb ? 'Specifications & Requirements' : 'Worked Examples'}
                 </h2>
                 <ProblemDescription
-                  text={challenge.description}
+                  text={description}
                   className={!isWeb ? '[&>*:not(:has(pre))]:hidden' : ''}
                 />
               </div>
@@ -423,22 +460,34 @@ export default function Challenge() {
                   ## Hints & Strategy
                 </h2>
                 {isWeb ? (
-                  <>
-                    <p className="text-fg-muted">
-                      • Build the page with plain HTML/CSS/JS or React. Focus on fulfilling each rubric criterion.
-                    </p>
-                    <p className="text-fg-muted">
-                      • Ensure state changes (like form submission and badges) update cleanly without page reload issues.
-                    </p>
-                  </>
+                  <p className="text-fg-muted">Hints are available for Python challenges only.</p>
+                ) : hints.length === 0 ? (
+                  <p className="text-fg-muted">No hints for this challenge.</p>
                 ) : (
                   <>
                     <p className="text-fg-muted">
-                      • Check input formats and constraints carefully. Ensure edge cases like 0, negative values, or single elements are handled.
+                      Each hint costs 1 point on future submissions. Revealed: {hintsUsed} /{' '}
+                      {hints.length}.
                     </p>
-                    <p className="text-fg-muted">
-                      • Standard Python modules (e.g. <code>math</code>, <code>collections</code>, <code>itertools</code>, <code>re</code>) are available in the runtime.
-                    </p>
+                    {hints.slice(0, hintsUsed).map((hint, index) => (
+                      <div key={index} className="border border-line-strong bg-surface-2 p-3">
+                        <span className="font-bold text-fg-muted">[{index + 1}]</span> {hint}
+                      </div>
+                    ))}
+                    {hintsUsed < hints.length ? (
+                      <button
+                        type="button"
+                        onClick={handleRevealHint}
+                        disabled={locked || revealingHint}
+                        className="h-9 border border-invert-bg bg-invert-bg px-4 text-xs font-bold uppercase tracking-wider text-invert-fg hover:shadow-hard-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {revealingHint
+                          ? '[...] revealing'
+                          : `[?] reveal hint ${hintsUsed + 1}/${hints.length} · -1 pt`}
+                      </button>
+                    ) : (
+                      <p className="text-fg-muted">[✓] All hints revealed.</p>
+                    )}
                   </>
                 )}
               </div>
@@ -648,6 +697,9 @@ export default function Challenge() {
             <span className="tabular-nums">ln {cursor.line}, col {cursor.col}</span>
             <span className="tabular-nums">tests {passedCount}/{tests.length}</span>
             <span className="tabular-nums">attempts {allSubmissions.length}</span>
+            {hintsUsed > 0 ? (
+              <span className="tabular-nums">hints -{hintsUsed}</span>
+            ) : null}
           </div>
         )}
 

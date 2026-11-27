@@ -1,38 +1,7 @@
 import { animate, createScope, scrambleText, stagger } from 'animejs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
-import { useScrambleAnimation } from '../hooks/useScrambleAnimation'
-
-// ── Stat card — numeric values count up from 0; text values scramble in ───────
-function StatCard({ value, label, delay = 0 }) {
-  const isNumeric = /^\d+$/.test(value)
-  const animated = useAnimatedNumber(isNumeric ? Number(value) : 0, { duration: 900 })
-
-  const [display, setDisplay] = useState(isNumeric ? value : '')
-  const { scrambleTo } = useScrambleAnimation({ defaultRevealRate: 25 })
-  const triggered = useRef(false)
-
-  useEffect(() => {
-    if (isNumeric || triggered.current) return
-    const t = setTimeout(() => {
-      triggered.current = true
-      scrambleTo('', value, setDisplay)
-    }, delay)
-    return () => clearTimeout(t)
-  }, [value, delay, isNumeric, scrambleTo])
-
-  return (
-    <div className="anim-stat opacity-0 flex flex-col items-center justify-center py-5 gap-1 hover:bg-surface-3 transition-colors">
-      <span className="text-2xl font-bold tabular-nums tracking-tight text-fg">
-        {isNumeric ? animated : (display || '\u00a0')}
-      </span>
-      <span className="text-[11px] uppercase tracking-widest text-fg-muted">
-        {label}
-      </span>
-    </div>
-  )
-}
+import { formatDuration } from '../lib/formatDuration'
 
 // ── ScrambleText — inline text that scrambles in after `delay` ms ─────────────
 function ScrambleText({ text, delay = 0, revealRate = 32, className = '' }) {
@@ -75,72 +44,67 @@ function ScrambleText({ text, delay = 0, revealRate = 32, className = '' }) {
   return <span ref={spanRef} className={className}>{text}</span>
 }
 
-function formatClock(totalSeconds) {
-  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
-  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
-  const s = String(totalSeconds % 60).padStart(2, '0')
-  return `${h}:${m}:${s}`
-}
+const SAMPLE_POINTS = 3
+const SAMPLE_TOTAL = 25
 
-// ── Static showcase data ───────────────────────────────────────────────────────
-const STATS = [
-  { value: '5', label: 'Challenges', delay: 460 },
-  { value: '3', label: 'Difficulty Tiers', delay: 530 },
-  { value: '20', label: 'Players', delay: 600 },
-  { value: 'Nov 27', label: 'Live Event', delay: 670 },
-]
+function progressBlocks(solved, total) {
+  const filled = Math.min(10, Math.round((solved / total) * 10))
+  return '■'.repeat(filled) + '□'.repeat(10 - filled)
+}
 
 const PREVIEW_TABS = [
   { id: 'editor', label: '01 EDITOR + TERMINAL' },
   { id: 'board', label: '02 CHALLENGE BOARD' },
-  { id: 'podium', label: '03 TV PODIUM' },
+  { id: 'podium', label: '03 LEADERBOARD' },
 ]
 
 const SAMPLE_CODE = [
-  'def sum_even(nums: list[int]) -> int:',
-  '    """Return the sum of all even integers."""',
+  'def even_sum(numbers):',
+  '    """Return the sum of even numbers."""',
   '    total = 0',
-  '    for n in nums:',
+  '    for n in numbers:',
   '        if n % 2 == 0:',
   '            total += n',
   '    return total',
 ]
 
 const SIMULATED_TESTS = [
-  { label: 'sum_even([1, 2, 3, 4])', detail: 'expected 6, got 6' },
-  { label: 'sum_even([1, 3, 5])', detail: 'expected 0, got 0' },
-  { label: 'hidden edge cases', detail: 'passed' },
+  { label: 'case 1 AC', detail: 'even_sum([1, 2, 3, 4])' },
+  { label: 'case 2 AC', detail: 'even_sum([])' },
+  { label: 'case 3 AC', detail: 'even_sum([1, 3])' },
+  { label: 'case 4 AC', detail: 'even_sum([-2, 0, 8])' },
+  { label: 'case 5 (hidden) AC', detail: '' },
 ]
 
 const BOARD_ITEMS = [
-  { tier: '[■□□] EASY', pts: '+10 pts', title: 'Sum of Evens', status: '[✓] SOLVED' },
-  { tier: '[■■□] MEDIUM', pts: '+20 pts', title: 'Bracket Validator', status: '[✓] SOLVED' },
-  { tier: '[■■■] HARD', pts: '+35 pts', title: 'Shortest Grid Path', status: '[ ] OPEN' },
-  { tier: '[WEB] RUBRIC', pts: '+50 pts', title: 'Task Queue UI', status: '[ ] JUDGED' },
+  { num: '026', tier: 'EASY', status: '[✓]', title: 'Star Staircase', blocks: '■□□□□', pts: '3 pts' },
+  { num: '027', tier: 'EASY', status: '[✓]', title: 'Hollow Frame', blocks: '■□□□□', pts: '3 pts' },
+  { num: '030', tier: 'MEDIUM', status: '[~]', title: 'Pyramid Parade', blocks: '■■■□□', pts: '6 pts' },
+  { num: '034', tier: 'HARD', status: '[ ]', title: 'Robot Courier', blocks: '■■■■■', pts: '11 pts' },
 ]
 
 const PODIUM_ROWS = [
-  { rank: '#1', name: '@ada_lovelace', solved: '4/5', pts: '85' },
-  { rank: '#2', name: '@linus_t', solved: '3/5', pts: '70' },
-  { rank: '#3', name: '@grace_h', solved: '3/5', pts: '55' },
-  { rank: '#4', name: '@alan_m', solved: '2/5', pts: '30' },
+  { rank: '01', name: '@SwiftFalcon42', solved: 12, pts: '0131' },
+  { rank: '02', name: '@BrightOtter17', solved: 10, pts: '0104' },
+  { rank: '03', name: '@CleverPanda83', solved: 9, pts: '0087' },
+  { rank: '04', name: '@BraveComet26', solved: 7, pts: '0062' },
 ]
 
 const STEPS = [
   {
     num: '01',
     title: 'JOIN ROOM',
-    desc: 'Pick a display name and enter the room code. No account, no password, no setup.',
+    desc: "Pick a display name and enter the room code. You don't need an account or a password.",
   },
   {
     num: '02',
     title: 'CODE & TEST',
-    desc: 'Write Python in VS Code or the browser editor. Every test runs locally via Pyodide.',
+    desc: 'Python tests run locally through Pyodide. Web challenges are scored in person.',
   },
   {
     num: '03',
     title: 'CLIMB PODIUM',
-    desc: 'Passing runs score points immediately and stream to the live TV leaderboard.',
+    desc: 'Each revealed hint costs 1 point. The first full solve in a room adds 5 bonus points.',
   },
 ]
 
@@ -164,7 +128,7 @@ function AppPreview() {
 
   useEffect(() => clearRunTimers, [clearRunTimers])
 
-  // Detect when "## INSIDE THE ARENA" is scrolled into view
+  // Detect when "## APP PREVIEW" is scrolled into view
   useEffect(() => {
     const el = sectionRef.current
     if (!el || typeof IntersectionObserver === 'undefined') {
@@ -188,13 +152,14 @@ function AppPreview() {
     setRunPhase('running')
     setPassedCount(0)
 
+    for (let i = 1; i < SIMULATED_TESTS.length; i += 1) {
+      timersRef.current.push(setTimeout(() => setPassedCount(i), i * 180))
+    }
     timersRef.current.push(
-      setTimeout(() => setPassedCount(1), 320),
-      setTimeout(() => setPassedCount(2), 680),
       setTimeout(() => {
-        setPassedCount(3)
+        setPassedCount(SIMULATED_TESTS.length)
         setRunPhase('done')
-      }, 1050),
+      }, SIMULATED_TESTS.length * 210),
     )
   }, [clearRunTimers])
 
@@ -331,10 +296,10 @@ function AppPreview() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="preview-heading" className="text-sm font-bold uppercase tracking-widest text-fg">
-            ## INSIDE THE ARENA
+            ## APP PREVIEW
           </h2>
           <p className="mt-1 text-xs text-fg-muted">
-            Auto-cycling preview — click any tab or <span className="text-fg">&gt; run</span> to inspect.
+            Sample standings and shipped puzzles. Click any tab or <span className="text-fg">&gt; run</span> to inspect.
           </p>
         </div>
 
@@ -365,11 +330,10 @@ function AppPreview() {
                   type="button"
                   aria-selected={selected}
                   onClick={() => handleSelectTab(tab.id)}
-                  className={`px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider border-l border-line transition-colors cursor-pointer ${
-                    selected
-                      ? 'bg-invert-bg text-invert-fg'
-                      : 'text-fg-muted hover:text-fg hover:bg-surface-3'
-                  }`}
+                  className={`px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider border-l border-line transition-colors cursor-pointer ${selected
+                    ? 'bg-invert-bg text-invert-fg'
+                    : 'text-fg-muted hover:text-fg hover:bg-surface-3'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -392,11 +356,10 @@ function AppPreview() {
                     type="button"
                     onClick={handleManualRun}
                     disabled={runPhase === 'running'}
-                    className={`h-8 border px-3 text-xs font-bold uppercase tracking-wider transition-transform ${
-                      runPhase === 'running'
-                        ? 'border-line-strong bg-hatch text-fg-muted opacity-50 cursor-not-allowed'
-                        : 'border-invert-bg bg-invert-bg text-invert-fg hover:shadow-hard-sm hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer'
-                    }`}
+                    className={`h-8 border px-3 text-xs font-bold uppercase tracking-wider transition-transform ${runPhase === 'running'
+                      ? 'border-line-strong bg-hatch text-fg-muted opacity-50 cursor-not-allowed'
+                      : 'border-invert-bg bg-invert-bg text-invert-fg hover:shadow-hard-sm hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer'
+                      }`}
                   >
                     {runPhase === 'running' ? '[…] running' : runPhase === 'done' ? '> run again' : '> run'}
                   </button>
@@ -421,12 +384,12 @@ function AppPreview() {
                 <div>
                   <div className="mb-3 flex items-center justify-between border-b border-dashed border-line pb-2 text-xs uppercase tracking-widest text-fg-muted">
                     <span>TERMINAL OUTPUT</span>
-                    <span>+15 PTS</span>
+                    <span>+{SAMPLE_POINTS} PTS</span>
                   </div>
 
                   {runPhase === 'idle' ? (
                     <p className="text-fg-muted">
-                      $ pyodide ready — click <span className="text-fg font-bold">&gt; run</span> to execute tests.
+                      $ pyodide ready. Click <span className="text-fg font-bold">&gt; run</span> to execute tests.
                     </p>
                   ) : (
                     <ul className="space-y-2">
@@ -441,9 +404,13 @@ function AppPreview() {
                             </span>
                             <div className="min-w-0">
                               <span className="text-fg">{t.label}</span>
-                              <span className="ml-2 text-xs text-fg-muted">
-                                {isPassed ? `— ${t.detail}` : '— executing...'}
-                              </span>
+                              {isPassed ? (
+                                t.detail ? (
+                                  <span className="ml-2 text-xs text-fg-muted">- {t.detail}</span>
+                                ) : null
+                              ) : (
+                                <span className="ml-2 text-xs text-fg-muted">- executing...</span>
+                              )}
                             </div>
                           </li>
                         )
@@ -455,7 +422,7 @@ function AppPreview() {
                 <div ref={summaryRef} className="mt-6 border-t border-dashed border-line pt-3 text-xs">
                   {runPhase === 'done' ? (
                     <p className="font-bold text-fg tabular-nums">
-                      Passed 3/3 tests  +15 points
+                      Passed {SIMULATED_TESTS.length}/{SIMULATED_TESTS.length} tests  +{SAMPLE_POINTS} points
                     </p>
                   ) : (
                     <p className="text-fg-faint">
@@ -478,71 +445,110 @@ function AppPreview() {
                   <span className="border border-line-strong px-2.5 py-1 text-fg-muted">HARD</span>
                   <span className="border border-line-strong px-2.5 py-1 text-fg-muted">WEB</span>
                 </div>
-                <span className="text-xs text-fg-muted tabular-nums">ROOM: TEST1 · 45 PTS</span>
+                <span className="text-xs text-fg-muted tabular-nums">
+                  [{progressBlocks(2, SAMPLE_TOTAL)}] 2/{SAMPLE_TOTAL} solved
+                </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {BOARD_ITEMS.map((item) => (
                   <div
                     key={item.title}
-                    className="anim-board-card border border-line-strong bg-surface-2 p-4 flex flex-col justify-between gap-3 hover:shadow-hard-sm transition-shadow"
+                    className="anim-board-card flex flex-col border border-line-strong bg-surface-2 hover:shadow-hard-sm transition-shadow"
                   >
-                    <div className="flex items-center justify-between text-[11px] font-bold tracking-wider">
-                      <span className="text-fg-muted">{item.tier}</span>
-                      <span className="text-fg tabular-nums">{item.pts}</span>
+                    <div className="flex h-8 items-center justify-between border-b border-line-strong px-3 text-[11px] font-bold tracking-wider">
+                      <span className="tabular-nums text-fg">{item.num}</span>
+                      <span className="border border-line-strong px-2 text-fg-muted">[{item.tier}]</span>
+                      <span className="tabular-nums text-fg">{item.status}</span>
                     </div>
-                    <div className="text-sm font-bold text-fg">{item.title}</div>
-                    <div className="text-xs text-fg-muted">{item.status}</div>
+                    <div className="flex flex-1 flex-col justify-between gap-4 p-4">
+                      <div className="text-sm font-bold text-fg">{item.title}</div>
+                      <div className="flex items-center justify-between text-[11px] text-fg-muted">
+                        <span aria-hidden="true">{item.blocks}</span>
+                        <span className="font-bold tabular-nums">{item.pts}</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Tab 3: Live TV Podium */}
+          {/* Tab 3: Live leaderboard */}
           {activeTab === 'podium' && (
             <div className="p-4 sm:p-6 bg-surface-1 space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
-                <span className="text-xs font-bold uppercase tracking-widest text-fg">
-                  [TEST1] LIVE STANDINGS
-                </span>
-                <span className="text-sm font-bold tabular-nums text-fg">
-                  {formatClock(clockSeconds)}
-                </span>
+              <div className="border-b border-line pb-3">
+                <div className="text-sm font-bold uppercase tracking-widest text-fg">
+                  # Leaderboard
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+                  <span>~/leaderboard</span>
+                  <span>·</span>
+                  <span className="font-bold text-fg">live</span>
+                  <span>·</span>
+                  <span className="tabular-nums font-bold text-fg">
+                    {formatDuration(clockSeconds * 1000)} left
+                  </span>
+                  <span>·</span>
+                  <span className="font-bold">[TEST1]</span>
+                </div>
               </div>
 
               {/* Top 3 podium blocks on a dense dot-matrix stage */}
               <div className="border border-line bg-dots-dense p-4">
                 <div className="grid grid-cols-3 items-end gap-3">
-                  <div className="anim-podium-block border border-line-strong bg-surface-2 p-3 text-center">
-                    <div className="text-xs text-fg-muted">#2</div>
-                    <div className="mt-1 truncate text-xs font-bold text-fg">@linus_t</div>
-                    <div className="mt-1 text-sm font-bold tabular-nums text-fg">70 pts</div>
-                  </div>
-                  <div className="anim-podium-block border border-invert-bg bg-invert-bg p-4 text-center text-invert-fg shadow-hard-sm">
-                    <div className="text-xs font-bold">#1 LEADER</div>
-                    <div className="mt-1 truncate text-sm font-bold">@ada_lovelace</div>
-                    <div className="mt-1 text-base font-bold tabular-nums">85 pts</div>
-                  </div>
-                  <div className="anim-podium-block border border-line-strong bg-surface-2 p-3 text-center">
-                    <div className="text-xs text-fg-muted">#3</div>
-                    <div className="mt-1 truncate text-xs font-bold text-fg">@grace_h</div>
-                    <div className="mt-1 text-sm font-bold tabular-nums text-fg">55 pts</div>
-                  </div>
+                  {[PODIUM_ROWS[1], PODIUM_ROWS[0], PODIUM_ROWS[2]].map((row, idx) => {
+                    const isLeader = idx === 1
+                    return (
+                      <div
+                        key={row.rank}
+                        className={`anim-podium-block border p-3 text-center ${
+                          isLeader
+                            ? 'border-invert-bg bg-invert-bg text-invert-fg shadow-hard-sm'
+                            : 'border-line-strong bg-surface-2 text-fg'
+                        }`}
+                      >
+                        <div className={`flex items-center justify-between text-xs ${isLeader ? '' : 'text-fg-muted'}`}>
+                          <span className="tabular-nums">{row.rank}</span>
+                          <span aria-hidden="true">[★]</span>
+                        </div>
+                        <div className={`mt-1 truncate text-xs font-bold ${isLeader ? '' : 'text-fg'}`}>
+                          {row.name}
+                        </div>
+                        <div className="mt-1 text-sm font-bold tabular-nums">{row.pts} pts</div>
+                        <div
+                          className={`mt-1 truncate text-[10px] tracking-tight ${isLeader ? '' : 'text-fg-muted'}`}
+                          aria-label={`${row.solved} of ${SAMPLE_TOTAL} solved`}
+                        >
+                          [{progressBlocks(row.solved, SAMPLE_TOTAL)}]
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
               {/* Compact table */}
               <div className="border border-line-strong divide-y divide-line text-xs">
+                <div className="flex items-center justify-between border-b border-line-strong px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-fg-muted">
+                  <span className="w-6">#</span>
+                  <span className="flex-1">HANDLE</span>
+                  <span className="text-right">POINTS</span>
+                </div>
                 {PODIUM_ROWS.map((row) => (
                   <div key={row.rank} className="anim-podium-row flex items-center justify-between px-3 py-2 bg-surface-2">
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <span className="w-6 font-bold tabular-nums text-fg-muted">{row.rank}</span>
-                      <span className="font-bold text-fg">{row.name}</span>
+                      <span className="truncate font-bold text-fg">{row.name}</span>
                     </div>
-                    <div className="flex items-center gap-6 tabular-nums">
-                      <span className="text-fg-muted">{row.solved}</span>
-                      <span className="w-14 text-right font-bold text-fg">{row.pts} pts</span>
+                    <div className="flex items-center gap-3 tabular-nums">
+                      <span
+                        className="hidden text-fg-muted sm:inline"
+                        aria-label={`${row.solved} of ${SAMPLE_TOTAL} solved`}
+                      >
+                        [{progressBlocks(row.solved, SAMPLE_TOTAL)}]
+                      </span>
+                      <span className="w-16 text-right font-bold text-fg">{row.pts} pts</span>
                     </div>
                   </div>
                 ))}
@@ -577,14 +583,6 @@ export default function Landing() {
         translateY: [28, 0],
         delay: stagger(100, { start: 100 }),
         duration: 520,
-        ease: 'outCubic',
-      })
-
-      animate('.anim-stat', {
-        opacity: [0, 1],
-        translateY: [20, 0],
-        delay: stagger(70, { start: 420 }),
-        duration: 440,
         ease: 'outCubic',
       })
 
@@ -670,7 +668,7 @@ export default function Landing() {
               <ScrambleText
                 delay={650}
                 revealRate={90}
-                text="Solve Python and web challenges against the clock. Every submission runs instantly in your browser — no installs, no server, just you and the problem."
+                text="Solve Python and web challenges against the clock. Tests run in your browser, so there is nothing to install."
               />
             </p>
 
@@ -715,19 +713,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── Stats Bar ────────────────────────────────────────────────────── */}
-        <section aria-label="Event stats" className="mx-auto w-full max-w-5xl px-4 md:px-6 pb-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 border border-line-strong bg-surface-1 shadow-hard-sm divide-y md:divide-y-0 md:divide-x divide-line">
-            {STATS.map((stat) => (
-              <StatCard
-                key={stat.label}
-                value={stat.value}
-                label={stat.label}
-                delay={stat.delay}
-              />
-            ))}
-          </div>
-        </section>
 
         {/* ── Interactive App Preview ──────────────────────────────────────── */}
         <AppPreview />
@@ -759,7 +744,7 @@ export default function Landing() {
           <div className="anim-cta opacity-0 flex flex-col items-start justify-between gap-4 border border-line-strong bg-surface-1 bg-dots-dense p-6 shadow-hard-sm sm:flex-row sm:items-center">
             <div className="bg-surface-1 border border-line px-4 py-3">
               <h2 className="text-sm font-bold uppercase tracking-widest text-fg">
-                READY TO COMPETE?
+                JOIN A ROOM
               </h2>
               <p className="mt-1 text-xs text-fg-muted">
                 Enter a room code to start solving, or open the live TV board.

@@ -28,7 +28,7 @@ export function useChallenges(userId, roomId) {
             .eq('room_id', roomId),
           supabase
             .from('submissions')
-            .select('challenge_id')
+            .select('challenge_id, passed, total')
             .eq('user_id', userId)
             .eq('room_id', roomId),
         ])
@@ -37,17 +37,22 @@ export function useChallenges(userId, roomId) {
         if (scoreResult.error) throw scoreResult.error
 
         const challenges = challengeResult.data ?? []
-        const maxPoints = new Map(challenges.map((c) => [c.id, c.points]))
-        const solvedIds = new Set(
-          (scoreResult.data ?? [])
-            .filter((s) => s.points >= (maxPoints.get(s.challenge_id) ?? Infinity))
-            .map((s) => s.challenge_id),
-        )
+        const challengeById = new Map(challenges.map((challenge) => [challenge.id, challenge]))
+        const submissions = submissionResult.data ?? []
+        const solvedIds = new Set([
+          ...submissions
+            .filter((sub) => sub.total > 0 && sub.passed === sub.total)
+            .map((sub) => sub.challenge_id),
+          ...(scoreResult.data ?? [])
+            .filter((score) => {
+              const challenge = challengeById.get(score.challenge_id)
+              return challenge?.type === 'web' && score.points >= challenge.points
+            })
+            .map((score) => score.challenge_id),
+        ])
 
         const attemptedIds = new Set(
-          (submissionResult.data ?? [])
-            .map((s) => s.challenge_id)
-            .filter((id) => !solvedIds.has(id)),
+          submissions.map((sub) => sub.challenge_id).filter((id) => !solvedIds.has(id)),
         )
         ;(scoreResult.data ?? []).forEach((s) => {
           if (!solvedIds.has(s.challenge_id) && s.points > 0) {
